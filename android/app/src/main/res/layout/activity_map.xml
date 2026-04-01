@@ -49,6 +49,20 @@
     </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnMyLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="100dp"
+        android:layout_marginEnd="24dp"
+        android:contentDescription="My Location"
+        android:src="@android:drawable/ic_menu_mylocation"
+        app:backgroundTint="@color/surface"
+        app:tint="@color/primary"
+        app:fabSize="normal"
+        app:elevation="4dp" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnBack"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -32,5 +32,12 @@ class SettingsActivity : AppCompatActivity() {
                 prefs.edit().putBoolean("sound_enabled", isChecked).apply()
             }
         }
+
+        findViewById<SwitchCompat>(R.id.switchDebug).apply {
+            isChecked = prefs.getBoolean("debug_mode", false)
+            setOnCheckedChangeListener { _, isChecked ->
+                prefs.edit().putBoolean("debug_mode", isChecked).apply()
+            }
+        }
     }
 }

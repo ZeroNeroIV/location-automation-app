@@ -148,9 +148,8 @@ class ZoneListActivity : AppCompatActivity() {
     private fun editZone(zone: Zone) {
         val intent = Intent(this, MapActivity::class.java).apply {
             putExtra("zone_id", zone.id)
-            putExtra("edit_mode", true)
         }
-        editZoneLauncher.launch(intent)
+        startActivity(intent)
     }
 
     private fun openMapActivity() {

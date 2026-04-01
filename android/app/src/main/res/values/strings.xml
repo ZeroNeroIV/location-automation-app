@@ -42,5 +42,8 @@
     <string name="permission_denied_message">Permission is required for this feature to work properly.</string>
     <string name="zones_description">Manage your geofence zones</string>
     <string name="settings_description">Configure app preferences</string>
+    <string name="automation">Automation</string>
+    <string name="automation_on">Active - Monitoring zones</string>
+    <string name="automation_off">Off - Tap to enable</string>
     <string name="open">Open</string>
 </resources>

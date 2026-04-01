@@ -4,14 +4,19 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.location.LocationManager
 import android.os.Bundle
+import android.os.Looper
 import android.view.View
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.locationautomation.R
 import com.locationautomation.data.Profile
 import com.locationautomation.data.Zone
@@ -35,6 +40,18 @@ class MapActivity : AppCompatActivity() {
     private lateinit var database: ZoneDatabase
     private var userLocation: GeoPoint? = null
     private var zones: List<Zone> = emptyList()
+    private var userLocationMarker: Marker? = null
+    private lateinit var locationManager: LocationManager
+    private lateinit var longPressOverlay: org.osmdroid.views.overlay.Overlay
+    private var debugMode = false
+    private var selectedZoneForMove: Zone? = null
+    private val locationListener = object : android.location.LocationListener {
+        override fun onLocationChanged(location: android.location.Location) {
+            updateUserLocation(location)
+        }
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+    }
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -63,6 +80,8 @@ class MapActivity : AppCompatActivity() {
         setContentView(R.layout.activity_map)
         
         database = ZoneDatabase(this)
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        debugMode = getSharedPreferences("app_prefs", Context.MODE_PRIVATE).getBoolean("debug_mode", false)
         
         mapView = findViewById(R.id.mapView)
         mapView.setTileSource(TileSourceFactory.MAPNIK)
@@ -73,11 +92,18 @@ class MapActivity : AppCompatActivity() {
             finish()
         }
         
+        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.btnMyLocation).setOnClickListener {
+            userLocation?.let {
+                mapView.controller.animateTo(it)
+                mapView.controller.setZoom(17.0)
+            } ?: Toast.makeText(this, "Waiting for location...", Toast.LENGTH_SHORT).show()
+        }
+        
         findViewById<View>(R.id.btnDismissHint).setOnClickListener {
             findViewById<View>(R.id.hintCard).visibility = View.GONE
         }
         
-        mapView.overlays.add(object : org.osmdroid.views.overlay.Overlay() {
+        longPressOverlay = object : org.osmdroid.views.overlay.Overlay() {
             override fun onLongPress(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
                 if (e != null && mapView != null) {
                     val projection = mapView.projection
@@ -87,9 +113,26 @@ class MapActivity : AppCompatActivity() {
                 }
                 return false
             }
-        })
+
+            override fun onSingleTapConfirmed(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
+                if (debugMode && selectedZoneForMove != null && e != null && mapView != null) {
+                    val projection = mapView.projection
+                    val geoPoint = projection.fromPixels(e.x.toInt(), e.y.toInt()) as GeoPoint
+                    moveZone(selectedZoneForMove!!, geoPoint.latitude, geoPoint.longitude)
+                    selectedZoneForMove = null
+                    return true
+                }
+                return false
+            }
+        }
+        mapView.overlays.add(longPressOverlay)
         
         checkPermissionsAndLoad()
+        
+        val zoneId = intent.getStringExtra("zone_id")
+        if (zoneId != null) {
+            focusOnZone(zoneId)
+        }
     }
 
     private fun checkPermissionsAndLoad() {
@@ -122,20 +165,40 @@ class MapActivity : AppCompatActivity() {
     }
 
     private fun centerOnUserLocation() {
-        try {
-            val locationManager = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             
-            val location = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+            locationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                30000L,
+                10f,
+                locationListener,
+                Looper.getMainLooper()
+            )
+            locationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER,
+                30000L,
+                10f,
+                locationListener,
+                Looper.getMainLooper()
+            )
+            
+            val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             
             if (location != null) {
-                userLocation = GeoPoint(location.latitude, location.longitude)
-                mapView.controller.setCenter(userLocation)
-            } else {
-                Toast.makeText(this, "Unable to get current location", Toast.LENGTH_SHORT).show()
+                updateUserLocation(location)
             }
-        } catch (e: SecurityException) {
-            Toast.makeText(this, "Location permission required", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun updateUserLocation(location: android.location.Location) {
+        userLocation = GeoPoint(location.latitude, location.longitude)
+        
+        renderZones()
+        
+        if (mapView.controller != null && mapView.mapCenter == null) {
+            mapView.controller.setCenter(userLocation)
         }
     }
 
@@ -148,11 +211,34 @@ class MapActivity : AppCompatActivity() {
         }
     }
 
+    private fun focusOnZone(zoneId: String) {
+        val zone = zones.find { it.id == zoneId } ?: database.getZone(zoneId)
+        if (zone != null) {
+            val center = GeoPoint(zone.latitude, zone.longitude)
+            mapView.controller.animateTo(center)
+            mapView.controller.setZoom(17.0)
+            showZoneOptionsDialog(zone)
+        }
+    }
+
     private fun renderZones() {
         mapView.overlays.clear()
+        mapView.overlays.add(longPressOverlay)
         
         zones.forEach { zone ->
             addZoneMarker(zone)
+        }
+        
+        userLocation?.let {
+            userLocationMarker = Marker(mapView).apply {
+                position = it
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                title = "Your Location"
+                icon = ContextCompat.getDrawable(this@MapActivity, android.R.drawable.ic_menu_mylocation)?.apply {
+                    setTint(ContextCompat.getColor(this@MapActivity, R.color.primary))
+                }
+            }
+            mapView.overlays.add(userLocationMarker)
         }
         
         mapView.invalidate()
@@ -284,26 +370,62 @@ class MapActivity : AppCompatActivity() {
     }
 
     private fun showZoneOptionsDialog(zone: Zone) {
-        val options = arrayOf("Edit Zone", "Delete Zone")
-        AlertDialog.Builder(this)
-            .setTitle(zone.name)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showEditZoneDialog(zone)
-                    1 -> showDeleteZoneDialog(zone)
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_zone_options, null)
+        val bottomSheet = BottomSheetDialog(this)
+        bottomSheet.setContentView(sheetView)
+
+        sheetView.findViewById<TextView>(R.id.sheetZoneName).text = zone.name
+        sheetView.findViewById<TextView>(R.id.sheetZoneDetails).text =
+            "Radius: ${zone.radius.toInt()}m • Profile: ${getProfileName(zone.profileId)}"
+
+        if (debugMode) {
+            sheetView.findViewById<View>(R.id.actionMove).visibility = View.VISIBLE
+        }
+
+        sheetView.findViewById<View>(R.id.actionEdit).setOnClickListener {
+            bottomSheet.dismiss()
+            showEditZoneDialog(zone)
+        }
+
+        sheetView.findViewById<View>(R.id.actionMove).setOnClickListener {
+            bottomSheet.dismiss()
+            selectedZoneForMove = zone
+            Toast.makeText(this, "Tap on the map to move '${zone.name}'", Toast.LENGTH_LONG).show()
+        }
+
+        sheetView.findViewById<View>(R.id.actionDelete).setOnClickListener {
+            bottomSheet.dismiss()
+            showDeleteZoneDialog(zone)
+        }
+
+        bottomSheet.show()
+    }
+
+    private fun getProfileName(profileId: String): String {
+        return try {
+            database.getProfile(profileId)?.name ?: "Normal"
+        } catch (e: Exception) {
+            "Normal"
+        }
     }
 
     private fun showEditZoneDialog(zone: Zone) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_create_zone, null)
         val nameInput = dialogView.findViewById<EditText>(R.id.zoneNameInput)
         val radiusInput = dialogView.findViewById<EditText>(R.id.zoneRadiusInput)
+        val profileGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.profileGroup)
         
         nameInput.setText(zone.name)
         radiusInput.setText(zone.radius.toInt().toString())
+        
+        val currentProfile = database.getProfile(zone.profileId)
+        val profileToSelect = when {
+            currentProfile?.dndEnabled == true -> R.id.profileDnd
+            currentProfile?.ringtoneEnabled == false && currentProfile.vibrateEnabled == true -> R.id.profileVibrate
+            currentProfile?.ringtoneEnabled == false && currentProfile.alarmsEnabled == false -> R.id.profileSilent
+            else -> R.id.profileNormal
+        }
+        profileGroup.check(profileToSelect)
         
         AlertDialog.Builder(this)
             .setTitle("Edit Zone")
@@ -312,8 +434,16 @@ class MapActivity : AppCompatActivity() {
                 val name = nameInput.text.toString().trim()
                 val radius = radiusInput.text.toString().toDoubleOrNull() ?: zone.radius
                 
+                val profileType = when (profileGroup.checkedRadioButtonId) {
+                    R.id.profileNormal -> "normal"
+                    R.id.profileSilent -> "silent"
+                    R.id.profileVibrate -> "vibrate"
+                    R.id.profileDnd -> "dnd"
+                    else -> "normal"
+                }
+                
                 if (name.isNotEmpty()) {
-                    updateZone(zone.id, name, radius)
+                    updateZone(zone.id, name, radius, profileType)
                 } else {
                     Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
                 }
@@ -322,10 +452,29 @@ class MapActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun updateZone(zoneId: String, name: String, radius: Double) {
+    private fun updateZone(zoneId: String, name: String, radius: Double, profileType: String) {
         try {
             val existingZone = zones.find { it.id == zoneId }
             if (existingZone != null) {
+                val profileId = existingZone.profileId
+                val profile = Profile(
+                    id = profileId,
+                    name = when (profileType) {
+                        "normal" -> "Normal"
+                        "silent" -> "Silent"
+                        "vibrate" -> "Vibrate"
+                        "dnd" -> "Do Not Disturb"
+                        else -> "Normal"
+                    },
+                    ringtoneEnabled = profileType == "normal",
+                    vibrateEnabled = profileType == "normal" || profileType == "vibrate",
+                    unmuteEnabled = false,
+                    dndEnabled = profileType == "dnd",
+                    alarmsEnabled = profileType != "silent",
+                    timersEnabled = profileType != "silent"
+                )
+                database.saveProfile(profile)
+                
                 val updatedZone = existingZone.copy(name = name, radius = radius)
                 database.updateZone(updatedZone)
                 zones = database.getAllZones()
@@ -350,6 +499,19 @@ class MapActivity : AppCompatActivity() {
         }
     }
 
+    private fun moveZone(zone: Zone, latitude: Double, longitude: Double) {
+        try {
+            val updatedZone = zone.copy(latitude = latitude, longitude = longitude)
+            database.updateZone(updatedZone)
+            zones = database.getAllZones()
+            renderZones()
+            Toast.makeText(this, "Zone moved: ${zone.name}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            android.util.Log.e("MapActivity", "Failed to move zone", e)
+            Toast.makeText(this, "Failed to move zone", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         mapView.onResume()
@@ -358,5 +520,8 @@ class MapActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         mapView.onPause()
+        if (hasLocationPermission()) {
+            locationManager.removeUpdates(locationListener)
+        }
     }
 }
