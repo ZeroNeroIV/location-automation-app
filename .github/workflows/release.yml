@@ -43,5 +43,5 @@ jobs:
         gh release create "$TAG" \
           --title "Release $(date +%Y-%m-%d)" \
           --notes "Automatic release from CI/CD\n\nDebug build for testing." \
-          --draft false \
+          --draft=false \
           android/app/build/outputs/apk/debug/app-debug.apk
