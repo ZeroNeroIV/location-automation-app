@@ -21,6 +21,7 @@ import com.locationautomation.R
 import com.locationautomation.data.Profile
 import com.locationautomation.data.Zone
 import com.locationautomation.data.ZoneDatabase
+import com.locationautomation.util.SoundManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -352,6 +353,7 @@ class MapActivity : AppCompatActivity() {
             zones = database.getAllZones()
             renderZones()
             Toast.makeText(this, "Zone created: $name", Toast.LENGTH_SHORT).show()
+            SoundManager.playSound(this, R.raw.error_bleep_3)
         } catch (e: Exception) {
             android.util.Log.e("MapActivity", "Failed to create zone", e)
             Toast.makeText(this, "Failed to create zone", Toast.LENGTH_SHORT).show()
@@ -493,6 +495,7 @@ class MapActivity : AppCompatActivity() {
             zones = database.getAllZones()
             renderZones()
             Toast.makeText(this, "Zone deleted: ${zone.name}", Toast.LENGTH_SHORT).show()
+            SoundManager.playSound(this, R.raw.error_bleep_4)
         } catch (e: Exception) {
             android.util.Log.e("MapActivity", "Failed to delete zone", e)
             Toast.makeText(this, "Failed to delete zone", Toast.LENGTH_SHORT).show()

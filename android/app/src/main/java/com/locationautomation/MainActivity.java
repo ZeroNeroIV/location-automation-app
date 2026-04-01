@@ -25,6 +25,7 @@ import com.locationautomation.data.ZoneDatabase;
 import com.locationautomation.location.LocationForegroundService;
 import com.locationautomation.ui.SettingsActivity;
 import com.locationautomation.ui.ZoneListActivity;
+import com.locationautomation.util.SoundManager;
 
 import java.util.List;
 
@@ -157,7 +158,8 @@ public class MainActivity extends AppCompatActivity {
         if (isEnabled) {
             automationStatus.setText(R.string.automation_on);
         } else {
-            automationStatus.setText(R.string.automation_off);
+        automationStatus.setText(R.string.automation_off);
+        SoundManager.INSTANCE.playSound(getApplicationContext(), R.raw.error_bleep_5);
         }
 
         boolean debugMode = getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("debug_mode", false);

@@ -20,6 +20,7 @@ import com.locationautomation.R
 import com.locationautomation.data.Profile
 import com.locationautomation.data.Zone
 import com.locationautomation.data.ZoneDatabase
+import com.locationautomation.util.SoundManager
 
 class LocationForegroundService : Service() {
 
@@ -215,6 +216,7 @@ class LocationForegroundService : Service() {
                 sendZoneNotification(insideZone.name)
                 updateNotification("Zone: ${insideZone.name}", "Profile: ${profile?.name ?: "Normal"}")
                 broadcastStateChanged(insideZone.name, profile?.name ?: "Normal")
+                SoundManager.playSound(this, R.raw.error_bleep_1)
                 android.util.Log.d("LocationService", "Entered zone: ${insideZone.name}")
             } else if (previousZone != null) {
                 restoreNormalMode()
@@ -222,6 +224,7 @@ class LocationForegroundService : Service() {
                 zoneEntryTime = 0
                 updateNotification("Location Tracking Active", "Left zone: ${previousZone.name}")
                 broadcastStateChanged("", "")
+                SoundManager.playSound(this, R.raw.error_bleep_2)
                 android.util.Log.d("LocationService", "Exited zone: ${previousZone.name}")
             }
         }
