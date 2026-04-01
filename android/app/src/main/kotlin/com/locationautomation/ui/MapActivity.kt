@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.locationautomation.R
+import com.locationautomation.data.Profile
 import com.locationautomation.data.Zone
 import com.locationautomation.data.ZoneDatabase
 import org.osmdroid.config.Configuration
@@ -200,6 +201,7 @@ class MapActivity : AppCompatActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_create_zone, null)
         val nameInput = dialogView.findViewById<EditText>(R.id.zoneNameInput)
         val radiusInput = dialogView.findViewById<EditText>(R.id.zoneRadiusInput)
+        val profileGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.profileGroup)
         
         radiusInput.setText(DEFAULT_RADIUS_METERS.toInt().toString())
         
@@ -210,8 +212,16 @@ class MapActivity : AppCompatActivity() {
                 val name = nameInput.text.toString().trim()
                 val radius = radiusInput.text.toString().toDoubleOrNull() ?: DEFAULT_RADIUS_METERS
                 
+                val profileType = when (profileGroup.checkedRadioButtonId) {
+                    R.id.profileNormal -> "normal"
+                    R.id.profileSilent -> "silent"
+                    R.id.profileVibrate -> "vibrate"
+                    R.id.profileDnd -> "dnd"
+                    else -> "normal"
+                }
+                
                 if (name.isNotEmpty()) {
-                    createZone(name, location.latitude, location.longitude, radius)
+                    createZone(name, location.latitude, location.longitude, radius, profileType)
                 } else {
                     Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
                 }
@@ -220,7 +230,26 @@ class MapActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun createZone(name: String, latitude: Double, longitude: Double, radius: Double) {
+    private fun createZone(name: String, latitude: Double, longitude: Double, radius: Double, profileType: String) {
+        val profileId = UUID.randomUUID().toString()
+        
+        val profile = Profile(
+            id = profileId,
+            name = when (profileType) {
+                "normal" -> "Normal"
+                "silent" -> "Silent"
+                "vibrate" -> "Vibrate"
+                "dnd" -> "Do Not Disturb"
+                else -> "Normal"
+            },
+            ringtoneEnabled = profileType == "normal",
+            vibrateEnabled = profileType == "normal" || profileType == "vibrate",
+            unmuteEnabled = false,
+            dndEnabled = profileType == "dnd",
+            alarmsEnabled = profileType != "silent",
+            timersEnabled = profileType != "silent"
+        )
+        
         val zone = Zone(
             id = UUID.randomUUID().toString(),
             name = name,
@@ -228,10 +257,11 @@ class MapActivity : AppCompatActivity() {
             longitude = longitude,
             radius = radius,
             detectionMethods = listOf("gps"),
-            profileId = UUID.randomUUID().toString()
+            profileId = profileId
         )
         
         try {
+            database.saveProfile(profile)
             database.saveZone(zone)
             zones = database.getAllZones()
             renderZones()

@@ -32,4 +32,55 @@
         android:textColorHint="@color/on_surface_tertiary"
         android:textSize="16sp" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Profile"
+        android:textColor="@color/on_surface"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium" />
+
+    <RadioGroup
+        android:id="@+id/profileGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/profileNormal"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Normal - Ring &amp; Vibrate"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp"
+            android:checked="true" />
+
+        <RadioButton
+            android:id="@+id/profileSilent"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Silent - No ring, no vibrate"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp" />
+
+        <RadioButton
+            android:id="@+id/profileVibrate"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Vibrate Only"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp" />
+
+        <RadioButton
+            android:id="@+id/profileDnd"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Do Not Disturb"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp" />
+
+    </RadioGroup>
+
 </LinearLayout>
