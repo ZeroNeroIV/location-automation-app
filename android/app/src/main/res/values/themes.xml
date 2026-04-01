@@ -19,4 +19,8 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@color/background</item>
     </style>
+
+    <style name="SwitchStyle" parent="Theme.LocationAutomation">
+        <item name="colorPrimary">@color/primary</item>
+    </style>
 </resources>
