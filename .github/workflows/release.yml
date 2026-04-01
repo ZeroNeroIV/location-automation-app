@@ -31,12 +31,6 @@ jobs:
       working-directory: ./android
       run: ./gradlew assembleDebug --no-daemon
       
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: android-debug-apk
-        path: ./apk
-        
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -49,7 +43,7 @@ jobs:
           
           ## Installation
           Download the APK below and install on your Android device.
-        files: ./apk/app-debug.apk
+        files: android/app/build/outputs/apk/debug/app-debug.apk
         draft: false
         prerelease: false
         generate_release_notes: true
