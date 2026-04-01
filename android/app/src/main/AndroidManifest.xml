@@ -15,15 +15,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <application
+        <application
         android:allowBackup="true"
         android:label="LocationAutomation"
         android:supportsRtl="true">
         
-        <activity
-            android:name=".ui.OnboardingActivity"
-            android:exported="true" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -36,15 +32,16 @@
         <activity
             android:name=".ui.MapActivity"
             android:exported="false" />
-
-        <activity
-            android:name=".ui.ProfileEditorActivity"
-            android:exported="false" />
         
         <activity
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:label="Settings" />
+        
+        <activity
+            android:name=".ui.ZoneListActivity"
+            android:exported="false"
+            android:label="Zones" />
         
         <service
             android:name=".location.LocationForegroundService"
