@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <PreferenceCategory app:title="General">
 
@@ -27,7 +28,7 @@
             app:key="debounce_time"
             app:title="Debounce Time (seconds)"
             app:defaultValue="30"
-            app:inputType="number" />
+            android:inputType="number" />
 
     </PreferenceCategory>
 
