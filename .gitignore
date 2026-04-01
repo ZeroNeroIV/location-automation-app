@@ -1,0 +1,39 @@
+# Build artifacts
+.build/
+.buildlog
+*.build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Swift Package Manager
+Package.resolved
+.swiftpm/
+
+# Xcode
+xcuserdata/
+*.xcodeproj/
+*.xcworkspace/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Android Build (keep gradle wrapper but ignore build outputs)
+android/build/
+android/.gradle/
+android/app/build/
+android/app/src/main/res/values-*
+*.iml
+.idea/
+
+# Logs
+*.log
+
+# Coverage
+*.gcov
+*.gcno
+coverage/

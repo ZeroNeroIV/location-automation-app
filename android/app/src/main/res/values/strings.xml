@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LocationAutomation</string>
+    <string name="zones">Zones</string>
+    <string name="add_zone">Add Zone</string>
+    <string name="edit_zone">Edit Zone</string>
+    <string name="delete_zone">Delete Zone</string>
+    <string name="no_zones">No Zones</string>
+    <string name="no_zones_hint">Tap + to create your first zone</string>
+    <string name="zone_deleted">Zone deleted</string>
+    <string name="zone_name">Zone name</string>
+    <string name="profile_name">Profile name</string>
+    <string name="radius">Radius</string>
+    <string name="meters">m</string>
+    <string name="active">Active</string>
+    <string name="inactive">Inactive</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="confirm_delete">Are you sure you want to delete this zone?</string>
+
+    <!-- Onboarding -->
+    <string name="skip">Skip</string>
+    <string name="continue_text">Continue</string>
+    <string name="get_started">Get Started</string>
+    <string name="onboarding_illustration">Onboarding illustration</string>
+
+    <!-- Page 1: Location Permission -->
+    <string name="onboarding_location_title">Enable Location</string>
+    <string name="onboarding_location_description">Allow location access to detect when you enter or leave zones automatically.</string>
+
+    <!-- Page 2: Notification Permission -->
+    <string name="onboarding_notification_title">Stay Notified</string>
+    <string name="onboarding_notification_description">Enable notifications to receive alerts when zones are triggered.</string>
+
+    <!-- Page 3: Create First Zone -->
+    <string name="onboarding_create_zone_title">Create Your First Zone</string>
+    <string name="onboarding_create_zone_description">Set up a geofence area to trigger automation rules.</string>
+
+    <string name="permission_denied_message">Permission is required for this feature to work properly.</string>
+</resources>
