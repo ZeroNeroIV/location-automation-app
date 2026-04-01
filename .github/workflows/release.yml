@@ -35,13 +35,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Create a tag for this release
-        TAG="release-$(date +%Y%m%d-%H%M%S)"
-        git tag "$TAG"
-        git push origin "$TAG"
+        # Generate unique tag from commit SHA + timestamp
+        TIMESTAMP=$(date +%s)
+        TAG="auto-release-${{ github.sha }}-${TIMESTAMP}"
         
-        # Create release and upload APK
+        # Create release - gh will create the tag automatically when uploading assets
         gh release create "$TAG" \
           --title "Release $(date +%Y-%m-%d)" \
           --notes "Automatic release from CI/CD\n\nDebug build for testing." \
+          --draft false \
           android/app/build/outputs/apk/debug/app-debug.apk
