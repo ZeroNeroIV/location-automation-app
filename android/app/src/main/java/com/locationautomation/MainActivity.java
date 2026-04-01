@@ -84,6 +84,12 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermission();
         setupViews();
         setupTimer();
+
+        // Restart service if automation was enabled but service isn't running
+        boolean automationEnabled = prefs.getBoolean(KEY_AUTOMATION_ENABLED, false);
+        if (automationEnabled) {
+            LocationForegroundService.start(getApplicationContext());
+        }
     }
 
     @Override
@@ -158,8 +164,7 @@ public class MainActivity extends AppCompatActivity {
         if (isEnabled) {
             automationStatus.setText(R.string.automation_on);
         } else {
-        automationStatus.setText(R.string.automation_off);
-        SoundManager.INSTANCE.playSound(getApplicationContext(), R.raw.error_bleep_5);
+            automationStatus.setText(R.string.automation_off);
         }
 
         boolean debugMode = getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("debug_mode", false);
@@ -248,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
         prefs.edit().putBoolean(KEY_AUTOMATION_ENABLED, false).apply();
         LocationForegroundService.stop(getApplicationContext());
         automationStatus.setText(R.string.automation_off);
+        SoundManager.INSTANCE.playSound(getApplicationContext(), R.raw.error_bleep_5);
         automationTimer.setVisibility(TextView.GONE);
         debugTriggers.setVisibility(LinearLayout.GONE);
     }
