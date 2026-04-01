@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="edit_background">#FFC107</color>
+    <color name="delete_background">#F44336</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

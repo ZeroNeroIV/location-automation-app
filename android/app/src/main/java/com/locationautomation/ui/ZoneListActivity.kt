@@ -89,11 +89,40 @@ class ZoneListActivity : AppCompatActivity() {
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
                 val zone = adapter.getZoneAt(position)
-                deleteZone(zone, position)
+                
+                if (direction == ItemTouchHelper.LEFT) {
+                    showDeleteConfirmation(zone, position)
+                } else {
+                    editZone(zone)
+                    adapter.notifyItemChanged(position)
+                }
+            }
+
+            override fun getSwipeDirs(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int {
+                return ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
             }
         }
 
         ItemTouchHelper(swipeHandler).attachToRecyclerView(recyclerView)
+    }
+
+    private fun showDeleteConfirmation(zone: Zone, position: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Zone")
+            .setMessage("Are you sure you want to delete '${zone.name}'?")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteZone(zone, position)
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                adapter.notifyItemChanged(position)
+            }
+            .setOnCancelListener {
+                adapter.notifyItemChanged(position)
+            }
+            .show()
     }
 
     private fun loadZones() {

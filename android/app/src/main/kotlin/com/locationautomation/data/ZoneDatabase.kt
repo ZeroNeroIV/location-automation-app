@@ -136,6 +136,19 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
         db.delete(TABLE_ZONES, "$COLUMN_ID = ?", arrayOf(id))
     }
 
+    fun updateZone(zone: Zone) {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_NAME, zone.name)
+            put(COLUMN_LATITUDE, zone.latitude)
+            put(COLUMN_LONGITUDE, zone.longitude)
+            put(COLUMN_RADIUS, zone.radius)
+            put(COLUMN_DETECTION_METHODS, zone.detectionMethods.joinToString(","))
+            put(COLUMN_PROFILE_ID, zone.profileId)
+        }
+        db.update(TABLE_ZONES, values, "$COLUMN_ID = ?", arrayOf(zone.id))
+    }
+
     fun saveProfile(profile: Profile) {
         val db = writableDatabase
         val values = ContentValues().apply {

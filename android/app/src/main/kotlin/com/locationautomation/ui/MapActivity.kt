@@ -68,6 +68,16 @@ class MapActivity : AppCompatActivity() {
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(17.0)
         
+        // FAB click handler to add zone at current location
+        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fabAddZone).setOnClickListener {
+            val location = userLocation
+            if (location != null) {
+                showCreateZoneDialog(location)
+            } else {
+                Toast.makeText(this, "Unable to get current location. Please ensure location permission is granted.", Toast.LENGTH_LONG).show()
+            }
+        }
+        
         mapView.overlays.add(object : org.osmdroid.views.overlay.Overlay() {
             override fun onLongPress(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
                 if (e != null && mapView != null) {
@@ -159,7 +169,7 @@ class MapActivity : AppCompatActivity() {
             snippet = "Radius: ${zone.radius.toInt()}m"
             
             setOnMarkerClickListener { _, _ ->
-                showDeleteZoneDialog(zone)
+                showZoneOptionsDialog(zone)
                 true
             }
         }
@@ -243,6 +253,61 @@ class MapActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun showZoneOptionsDialog(zone: Zone) {
+        val options = arrayOf("Edit Zone", "Delete Zone")
+        AlertDialog.Builder(this)
+            .setTitle(zone.name)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showEditZoneDialog(zone)
+                    1 -> showDeleteZoneDialog(zone)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showEditZoneDialog(zone: Zone) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_create_zone, null)
+        val nameInput = dialogView.findViewById<EditText>(R.id.zoneNameInput)
+        val radiusInput = dialogView.findViewById<EditText>(R.id.zoneRadiusInput)
+        
+        nameInput.setText(zone.name)
+        radiusInput.setText(zone.radius.toInt().toString())
+        
+        AlertDialog.Builder(this)
+            .setTitle("Edit Zone")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val name = nameInput.text.toString().trim()
+                val radius = radiusInput.text.toString().toDoubleOrNull() ?: zone.radius
+                
+                if (name.isNotEmpty()) {
+                    updateZone(zone.id, name, radius)
+                } else {
+                    Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun updateZone(zoneId: String, name: String, radius: Double) {
+        try {
+            val existingZone = zones.find { it.id == zoneId }
+            if (existingZone != null) {
+                val updatedZone = existingZone.copy(name = name, radius = radius)
+                database.updateZone(updatedZone)
+                zones = database.getAllZones()
+                renderZones()
+                Toast.makeText(this, "Zone updated: $name", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MapActivity", "Failed to update zone", e)
+            Toast.makeText(this, "Failed to update zone", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun deleteZone(zone: Zone) {

@@ -5,33 +5,21 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <com.google.android.material.textfield.TextInputLayout
+    <EditText
+        android:id="@+id/zoneNameInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Zone Name">
+        android:hint="Zone Name"
+        android:inputType="text"
+        android:maxLines="1" />
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/zoneNameInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
+    <EditText
+        android:id="@+id/zoneRadiusInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Radius (meters)">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/zoneRadiusInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:maxLines="1" />
-
-    </com.google.android.material.textfield.TextInputLayout>
+        android:hint="Radius (meters)"
+        android:inputType="numberDecimal"
+        android:maxLines="1" />
 
 </LinearLayout>
