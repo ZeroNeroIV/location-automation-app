@@ -8,6 +8,9 @@ on:
     types: [completed]
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   release:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -35,11 +38,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Generate unique tag from commit SHA + timestamp
         TIMESTAMP=$(date +%s)
         TAG="auto-release-${{ github.sha }}-${TIMESTAMP}"
         
-        # Create release - gh will create the tag automatically when uploading assets
         gh release create "$TAG" \
           --title "Release $(date +%Y-%m-%d)" \
           --notes "Automatic release from CI/CD\n\nDebug build for testing." \
