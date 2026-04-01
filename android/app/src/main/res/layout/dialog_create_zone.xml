@@ -3,23 +3,33 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp">
 
     <EditText
         android:id="@+id/zoneNameInput"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
+        android:background="@drawable/input_background"
         android:hint="Zone Name"
         android:inputType="text"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:paddingHorizontal="16dp"
+        android:textColor="@color/on_surface"
+        android:textColorHint="@color/on_surface_tertiary"
+        android:textSize="16sp" />
 
     <EditText
         android:id="@+id/zoneRadiusInput"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/input_background"
         android:hint="Radius (meters)"
         android:inputType="numberDecimal"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:paddingHorizontal="16dp"
+        android:textColor="@color/on_surface"
+        android:textColorHint="@color/on_surface_tertiary"
+        android:textSize="16sp" />
 
 </LinearLayout>

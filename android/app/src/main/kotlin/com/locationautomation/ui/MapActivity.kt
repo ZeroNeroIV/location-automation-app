@@ -69,6 +69,10 @@ class MapActivity : AppCompatActivity() {
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(17.0)
         
+        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.btnBack).setOnClickListener {
+            finish()
+        }
+        
         findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fabAddZone).setOnClickListener {
             isTapToPlaceMode = !isTapToPlaceMode
             if (isTapToPlaceMode) {
@@ -177,8 +181,8 @@ class MapActivity : AppCompatActivity() {
         
         val circle = Polygon().apply {
             points = calculateCirclePoints(zone.latitude, zone.longitude, zone.radius)
-            fillPaint.color = Color.argb(50, 33, 150, 243)
-            outlinePaint.color = Color.BLUE
+            fillPaint.color = Color.argb(32, 13, 148, 136)
+            outlinePaint.color = Color.parseColor("#0D9488")
             outlinePaint.strokeWidth = 2f
         }
         mapView.overlays.add(circle)

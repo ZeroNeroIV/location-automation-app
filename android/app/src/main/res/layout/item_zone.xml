@@ -5,10 +5,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="4dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    android:layout_marginHorizontal="24dp"
+    android:layout_marginVertical="6dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/outline"
+    app:cardBackgroundColor="@color/surface">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -17,20 +20,21 @@
 
         <View
             android:id="@+id/activeIndicator"
-            android:layout_width="8dp"
-            android:layout_height="8dp"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
             android:background="@drawable/active_indicator"
-            app:layout_constraintBottom_toBottomOf="@id/zoneName"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@id/zoneName" />
+            app:layout_constraintTop_toTopOf="@id/zoneName"
+            app:layout_constraintBottom_toBottomOf="@id/zoneName" />
 
         <TextView
             android:id="@+id/zoneName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-            android:textColor="#212121"
+            android:textColor="@color/on_surface"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium"
             app:layout_constraintEnd_toStartOf="@id/zoneInfo"
             app:layout_constraintStart_toEndOf="@id/activeIndicator"
             app:layout_constraintTop_toTopOf="parent"
@@ -42,8 +46,8 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-            android:textColor="#757575"
+            android:textColor="@color/on_surface_secondary"
+            android:textSize="13sp"
             app:layout_constraintEnd_toStartOf="@id/zoneInfo"
             app:layout_constraintStart_toEndOf="@id/activeIndicator"
             app:layout_constraintTop_toBottomOf="@id/zoneName"
@@ -53,8 +57,8 @@
             android:id="@+id/zoneInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="#9E9E9E"
+            android:textColor="@color/on_surface_tertiary"
+            android:textSize="13sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"

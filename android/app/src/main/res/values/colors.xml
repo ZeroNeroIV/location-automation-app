@@ -1,7 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="edit_background">#FFC107</color>
-    <color name="delete_background">#F44336</color>
+    <color name="primary">#0D9488</color>
+    <color name="primary_variant">#0F766E</color>
+    <color name="primary_light">#14B8A6</color>
+    <color name="on_primary">#FFFFFF</color>
+    
+    <color name="secondary">#6366F1</color>
+    <color name="secondary_variant">#4F46E5</color>
+    <color name="on_secondary">#FFFFFF</color>
+    
+    <color name="background">#FAFAFA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F5F5F5</color>
+    <color name="on_background">#18181B</color>
+    <color name="on_surface">#18181B</color>
+    <color name="on_surface_secondary">#71717A</color>
+    <color name="on_surface_tertiary">#A1A1AA</color>
+    
+    <color name="error">#EF4444</color>
+    <color name="on_error">#FFFFFF</color>
+    
+    <color name="outline">#E4E4E7</color>
+    <color name="divider">#F4F4F5</color>
+    
+    <color name="zone_circle_fill">#0D948820</color>
+    <color name="zone_circle_stroke">#0D9488</color>
+    
+    <color name="edit_background">#F59E0B</color>
+    <color name="delete_background">#EF4444</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>

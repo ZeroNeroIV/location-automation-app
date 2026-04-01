@@ -73,6 +73,10 @@ class ZoneListActivity : AppCompatActivity() {
         findViewById<View>(R.id.fabAddZone).setOnClickListener {
             openMapActivity()
         }
+
+        findViewById<View>(R.id.btnBack)?.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
     }
 
     private fun setupSwipeToDelete() {
