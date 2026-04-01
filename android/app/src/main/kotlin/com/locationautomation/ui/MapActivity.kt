@@ -34,6 +34,7 @@ class MapActivity : AppCompatActivity() {
     private lateinit var database: ZoneDatabase
     private var userLocation: GeoPoint? = null
     private var zones: List<Zone> = emptyList()
+    private var isTapToPlaceMode = false
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -68,15 +69,27 @@ class MapActivity : AppCompatActivity() {
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(17.0)
         
-        // FAB click handler to add zone at current location
         findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fabAddZone).setOnClickListener {
-            val location = userLocation
-            if (location != null) {
-                showCreateZoneDialog(location)
+            isTapToPlaceMode = !isTapToPlaceMode
+            if (isTapToPlaceMode) {
+                Toast.makeText(this, "Tap on the map to place a zone", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Unable to get current location. Please ensure location permission is granted.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Tap-to-place mode cancelled", Toast.LENGTH_SHORT).show()
             }
         }
+        
+        mapView.overlays.add(object : org.osmdroid.views.overlay.Overlay() {
+            override fun onSingleTapConfirmed(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
+                if (isTapToPlaceMode && e != null && mapView != null) {
+                    val projection = mapView.projection
+                    val geoPoint = projection.fromPixels(e.x.toInt(), e.y.toInt()) as GeoPoint
+                    showCreateZoneDialog(geoPoint)
+                    isTapToPlaceMode = false
+                    return true
+                }
+                return false
+            }
+        })
         
         mapView.overlays.add(object : org.osmdroid.views.overlay.Overlay() {
             override fun onLongPress(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
@@ -162,6 +175,14 @@ class MapActivity : AppCompatActivity() {
     private fun addZoneMarker(zone: Zone) {
         val center = GeoPoint(zone.latitude, zone.longitude)
         
+        val circle = Polygon().apply {
+            points = calculateCirclePoints(zone.latitude, zone.longitude, zone.radius)
+            fillPaint.color = Color.argb(50, 33, 150, 243)
+            outlinePaint.color = Color.BLUE
+            outlinePaint.strokeWidth = 2f
+        }
+        mapView.overlays.add(circle)
+        
         val marker = Marker(mapView).apply {
             position = center
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
@@ -174,14 +195,6 @@ class MapActivity : AppCompatActivity() {
             }
         }
         mapView.overlays.add(marker)
-        
-        val circle = Polygon().apply {
-            points = calculateCirclePoints(zone.latitude, zone.longitude, zone.radius)
-            fillPaint.color = Color.argb(50, 33, 150, 243)
-            outlinePaint.color = Color.BLUE
-            outlinePaint.strokeWidth = 2f
-        }
-        mapView.overlays.add(circle)
     }
 
     private fun calculateCirclePoints(centerLat: Double, centerLng: Double, radiusMeters: Double): List<GeoPoint> {

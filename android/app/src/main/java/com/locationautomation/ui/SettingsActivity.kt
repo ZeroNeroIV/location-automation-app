@@ -58,21 +58,6 @@ class SettingsActivity : AppCompatActivity() {
         }
         layout.addView(soundSwitch)
         
-        val learningLabel = TextView(this).apply {
-            text = "Learning"
-            textSize = 16f
-            setPadding(0, 24, 0, 0)
-        }
-        layout.addView(learningLabel)
-        
-        val learningSwitch = SwitchCompat(this).apply {
-            isChecked = prefs.getBoolean("learning_enabled", true)
-            setOnCheckedChangeListener { _, isChecked ->
-                prefs.edit().putBoolean("learning_enabled", isChecked).apply()
-            }
-        }
-        layout.addView(learningSwitch)
-        
         val versionLabel = TextView(this).apply {
             text = "Version: 1.0.0"
             textSize = 14f
