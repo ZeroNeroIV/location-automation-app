@@ -34,7 +34,6 @@ class MapActivity : AppCompatActivity() {
     private lateinit var database: ZoneDatabase
     private var userLocation: GeoPoint? = null
     private var zones: List<Zone> = emptyList()
-    private var isTapToPlaceMode = false
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -73,27 +72,9 @@ class MapActivity : AppCompatActivity() {
             finish()
         }
         
-        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fabAddZone).setOnClickListener {
-            isTapToPlaceMode = !isTapToPlaceMode
-            if (isTapToPlaceMode) {
-                Toast.makeText(this, "Tap on the map to place a zone", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Tap-to-place mode cancelled", Toast.LENGTH_SHORT).show()
-            }
+        findViewById<View>(R.id.btnDismissHint).setOnClickListener {
+            findViewById<View>(R.id.hintCard).visibility = View.GONE
         }
-        
-        mapView.overlays.add(object : org.osmdroid.views.overlay.Overlay() {
-            override fun onSingleTapConfirmed(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
-                if (isTapToPlaceMode && e != null && mapView != null) {
-                    val projection = mapView.projection
-                    val geoPoint = projection.fromPixels(e.x.toInt(), e.y.toInt()) as GeoPoint
-                    showCreateZoneDialog(geoPoint)
-                    isTapToPlaceMode = false
-                    return true
-                }
-                return false
-            }
-        })
         
         mapView.overlays.add(object : org.osmdroid.views.overlay.Overlay() {
             override fun onLongPress(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
