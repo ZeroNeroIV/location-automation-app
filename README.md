@@ -10,6 +10,11 @@ A cross-platform mobile application (iOS + Android) that automatically switches 
 - **Detection Priority**: Manual > GPS > WiFi > Bluetooth
 - **On-Device ML Learning**: Tracks patterns and suggests profile modifications
 - **Battery Efficient**: Targets <5% battery usage per day
+- **Material3 UI**: Modern, minimal design with consistent elevation and 8dp grid spacing
+- **Dark Theme**: Full dark mode with adaptive map tiles (CartoDB Dark Matter), toggleable in Settings
+- **Zone Search**: Auto-complete search bar on the map with RTL/Arabic support for quick zone navigation
+- **Sound Effects**: Contextual audio feedback for automation toggle, zone creation, editing, and deletion
+- **Debug Mode**: Simulate zone entry/exit triggers with on-screen buttons for testing
 
 ## Platform Support
 

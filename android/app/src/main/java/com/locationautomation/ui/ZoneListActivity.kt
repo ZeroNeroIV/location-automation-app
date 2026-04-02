@@ -6,7 +6,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -15,7 +14,7 @@ import com.locationautomation.R
 import com.locationautomation.data.Zone
 import com.locationautomation.data.ZoneDatabase
 
-class ZoneListActivity : AppCompatActivity() {
+class ZoneListActivity : BaseActivity() {
 
     companion object {
         private const val REQUEST_EDIT_ZONE = 1001

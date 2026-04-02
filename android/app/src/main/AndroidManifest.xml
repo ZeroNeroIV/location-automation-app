@@ -46,6 +46,11 @@
             android:exported="false"
             android:label="Zones" />
         
+        <activity
+            android:name=".ui.ProfileEditorActivity"
+            android:exported="false"
+            android:label="Profile Editor" />
+        
         <service
             android:name=".location.LocationForegroundService"
             android:exported="false"

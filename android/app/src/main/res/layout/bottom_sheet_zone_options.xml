@@ -105,7 +105,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@android:drawable/ic_menu_delete"
-            android:tint="#EF4444"
+            android:tint="@color/error"
             android:contentDescription="@null" />
 
         <TextView
@@ -113,7 +113,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:text="Delete Zone"
-            android:textColor="#EF4444"
+            android:textColor="@color/error"
             android:textSize="16sp" />
 
     </LinearLayout>

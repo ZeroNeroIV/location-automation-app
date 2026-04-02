@@ -18,6 +18,7 @@ import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.locationautomation.data.Zone;
@@ -59,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView automationTimer;
     private LinearLayout debugTriggers;
     private LinearLayout debugButtonsContainer;
+    private Button btnBackToNormal;
     private Handler timerHandler;
     private Runnable timerRunnable;
     private ZoneDatabase database;
@@ -73,6 +75,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        SharedPreferences appPrefs = getSharedPreferences("app_prefs", MODE_PRIVATE);
+        boolean darkMode = appPrefs.getBoolean("dark_mode", false);
+        AppCompatDelegate.setDefaultNightMode(
+            darkMode ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO
+        );
+        
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -124,6 +132,13 @@ public class MainActivity extends AppCompatActivity {
         automationTimer = findViewById(R.id.automationTimer);
         debugTriggers = findViewById(R.id.debugTriggers);
         debugButtonsContainer = findViewById(R.id.debugButtonsContainer);
+        btnBackToNormal = findViewById(R.id.btnBackToNormal);
+
+        btnBackToNormal.setOnClickListener(v -> {
+            disableAutomation();
+            prefs.edit().putBoolean("debug_mode", false).apply();
+            debugTriggers.setVisibility(LinearLayout.GONE);
+        });
 
         cardZones.setOnClickListener(v -> {
             startActivity(new Intent(this, ZoneListActivity.class));

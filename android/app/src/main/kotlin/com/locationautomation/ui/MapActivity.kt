@@ -8,12 +8,14 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -23,6 +25,7 @@ import com.locationautomation.data.Zone
 import com.locationautomation.data.ZoneDatabase
 import com.locationautomation.util.SoundManager
 import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -30,11 +33,27 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 import java.util.UUID
 
-class MapActivity : AppCompatActivity() {
+class MapActivity : BaseActivity() {
 
     companion object {
         private const val DEFAULT_RADIUS_METERS = 100.0
         private const val PERMISSION_REQUEST_CODE = 1001
+        
+        // Dark map tile source (CartoDB Dark Matter)
+        private val DARK_TILE_SOURCE = XYTileSource(
+            "CartoDBDarkMatter",
+            1,
+            20,
+            256,
+            ".png",
+            arrayOf(
+                "https://a.basemaps.cartocdn.com/dark_all/",
+                "https://b.basemaps.cartocdn.com/dark_all/",
+                "https://c.basemaps.cartocdn.com/dark_all/",
+                "https://d.basemaps.cartocdn.com/dark_all/"
+            ),
+            "CartoDB Dark Matter"
+        )
     }
 
     private lateinit var mapView: MapView
@@ -46,6 +65,8 @@ class MapActivity : AppCompatActivity() {
     private lateinit var longPressOverlay: org.osmdroid.views.overlay.Overlay
     private var debugMode = false
     private var selectedZoneForMove: Zone? = null
+    private var searchAdapter: ArrayAdapter<String>? = null
+    private var searchZoneMap: MutableMap<String, Zone> = mutableMapOf()
     private val locationListener = object : android.location.LocationListener {
         override fun onLocationChanged(location: android.location.Location) {
             updateUserLocation(location)
@@ -85,7 +106,7 @@ class MapActivity : AppCompatActivity() {
         debugMode = getSharedPreferences("app_prefs", Context.MODE_PRIVATE).getBoolean("debug_mode", false)
         
         mapView = findViewById(R.id.mapView)
-        mapView.setTileSource(TileSourceFactory.MAPNIK)
+        mapView.setTileSource(if (isDarkMode()) DARK_TILE_SOURCE else TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(17.0)
         
@@ -103,6 +124,8 @@ class MapActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnDismissHint).setOnClickListener {
             findViewById<View>(R.id.hintCard).visibility = View.GONE
         }
+        
+        setupSearch()
         
         longPressOverlay = object : org.osmdroid.views.overlay.Overlay() {
             override fun onLongPress(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
@@ -134,6 +157,10 @@ class MapActivity : AppCompatActivity() {
         if (zoneId != null) {
             focusOnZone(zoneId)
         }
+    }
+
+    private fun isDarkMode(): Boolean {
+        return (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
 
     private fun checkPermissionsAndLoad() {
@@ -207,6 +234,7 @@ class MapActivity : AppCompatActivity() {
         try {
             zones = database.getAllZones()
             renderZones()
+            updateSearchAdapter()
         } catch (e: Exception) {
             android.util.Log.e("MapActivity", "Failed to load zones", e)
         }
@@ -248,10 +276,13 @@ class MapActivity : AppCompatActivity() {
     private fun addZoneMarker(zone: Zone) {
         val center = GeoPoint(zone.latitude, zone.longitude)
         
+        val fillColor = if (isDarkMode()) Color.argb(48, 20, 184, 166) else Color.argb(32, 13, 148, 136)
+        val strokeColor = if (isDarkMode()) Color.parseColor("#14B8A6") else Color.parseColor("#0D9488")
+        
         val circle = Polygon().apply {
             points = calculateCirclePoints(zone.latitude, zone.longitude, zone.radius)
-            fillPaint.color = Color.argb(32, 13, 148, 136)
-            outlinePaint.color = Color.parseColor("#0D9488")
+            fillPaint.color = fillColor
+            outlinePaint.color = strokeColor
             outlinePaint.strokeWidth = 2f
         }
         mapView.overlays.add(circle)
@@ -282,6 +313,83 @@ class MapActivity : AppCompatActivity() {
         }
         
         return points
+    }
+
+    private fun setupSearch() {
+        val searchInput = findViewById<AutoCompleteTextView>(R.id.searchInput)
+        val btnClear = findViewById<ImageButton>(R.id.btnClearSearch)
+        
+        searchInput.textDirection = View.TEXT_DIRECTION_RTL
+        searchInput.gravity = android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL
+        
+        searchAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, emptyList<String>())
+        searchAdapter?.setDropDownViewResource(android.R.layout.simple_dropdown_item_1line)
+        searchInput.setAdapter(searchAdapter)
+        
+        searchInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val query = s?.toString()?.trim() ?: ""
+                btnClear.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
+                
+                if (query.isEmpty()) {
+                    searchAdapter?.clear()
+                    searchZoneMap.clear()
+                    return
+                }
+                
+                val matches = zones.filter { it.name.contains(query, ignoreCase = true) }
+                searchZoneMap.clear()
+                val names = matches.map { it.name }
+                matches.forEach { searchZoneMap[it.name] = it }
+                
+                searchAdapter?.clear()
+                searchAdapter?.addAll(names)
+                searchAdapter?.notifyDataSetChanged()
+                
+                if (matches.size == 1 && query.length >= 2) {
+                    searchInput.setText(matches[0].name)
+                    searchInput.clearFocus()
+                    navigateToZone(matches[0])
+                }
+            }
+        })
+        
+        searchInput.setOnItemClickListener { _, _, position, _ ->
+            val selectedName = searchInput.adapter.getItem(position) as String
+            searchZoneMap[selectedName]?.let { zone ->
+                navigateToZone(zone)
+            }
+            searchInput.clearFocus()
+        }
+        
+        btnClear.setOnClickListener {
+            searchInput.setText("")
+            searchInput.clearFocus()
+        }
+    }
+    
+    private fun navigateToZone(zone: Zone) {
+        val center = GeoPoint(zone.latitude, zone.longitude)
+        mapView.controller.animateTo(center)
+        mapView.controller.setZoom(17.0)
+        showZoneOptionsDialog(zone)
+    }
+    
+    private fun updateSearchAdapter() {
+        val searchInput = findViewById<AutoCompleteTextView>(R.id.searchInput)
+        val currentQuery = searchInput.text.toString().trim()
+        
+        if (currentQuery.isNotEmpty()) {
+            val matches = zones.filter { it.name.contains(currentQuery, ignoreCase = true) }
+            searchZoneMap.clear()
+            val names = matches.map { it.name }
+            matches.forEach { searchZoneMap[it.name] = it }
+            searchAdapter?.clear()
+            searchAdapter?.addAll(names)
+            searchAdapter?.notifyDataSetChanged()
+        }
     }
 
     private fun showCreateZoneDialog(location: GeoPoint) {
@@ -352,6 +460,7 @@ class MapActivity : AppCompatActivity() {
             database.saveZone(zone)
             zones = database.getAllZones()
             renderZones()
+            updateSearchAdapter()
             Toast.makeText(this, "Zone created: $name", Toast.LENGTH_SHORT).show()
             SoundManager.playSound(this, R.raw.error_bleep_3)
         } catch (e: Exception) {
@@ -481,6 +590,7 @@ class MapActivity : AppCompatActivity() {
                 database.updateZone(updatedZone)
                 zones = database.getAllZones()
                 renderZones()
+                updateSearchAdapter()
                 Toast.makeText(this, "Zone updated: $name", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
@@ -494,6 +604,7 @@ class MapActivity : AppCompatActivity() {
             database.deleteZone(zone.id)
             zones = database.getAllZones()
             renderZones()
+            updateSearchAdapter()
             Toast.makeText(this, "Zone deleted: ${zone.name}", Toast.LENGTH_SHORT).show()
             SoundManager.playSound(this, R.raw.error_bleep_4)
         } catch (e: Exception) {
