@@ -12,6 +12,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -108,7 +109,7 @@ class MapActivity : BaseActivity() {
         
         database = ZoneDatabase(this)
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        debugMode = getSharedPreferences("app_prefs", Context.MODE_PRIVATE).getBoolean("debug_mode", false)
+        debugMode = getSharedPreferences("app_prefs", Context.MODE_PRIVATE).getBoolean("dev_mode", false)
         
         mapView = findViewById(R.id.mapView)
         mapView.setTileSource(if (isDarkMode()) DARK_TILE_SOURCE else TileSourceFactory.MAPNIK)
@@ -469,37 +470,39 @@ class MapActivity : BaseActivity() {
         }
     }
 
+    private var currentEditingZone: Zone? = null
+    private var selectedProfileType: String = "normal"
+
     private fun showCreateZoneDialog(location: GeoPoint) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_create_zone, null)
-        val nameInput = dialogView.findViewById<EditText>(R.id.zoneNameInput)
-        val radiusInput = dialogView.findViewById<EditText>(R.id.zoneRadiusInput)
-        val profileGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.profileGroup)
-        
-        radiusInput.setText(DEFAULT_RADIUS_METERS.toInt().toString())
-        
-        AlertDialog.Builder(this)
-            .setTitle("Create New Zone")
-            .setView(dialogView)
-            .setPositiveButton("Create") { _, _ ->
-                val name = nameInput.text.toString().trim()
-                val radius = radiusInput.text.toString().toDoubleOrNull() ?: DEFAULT_RADIUS_METERS
-                
-                val profileType = when (profileGroup.checkedRadioButtonId) {
-                    R.id.profileNormal -> "normal"
-                    R.id.profileSilent -> "silent"
-                    R.id.profileVibrate -> "vibrate"
-                    R.id.profileDnd -> "dnd"
-                    else -> "normal"
-                }
-                
-                if (name.isNotEmpty()) {
-                    createZone(name, location.latitude, location.longitude, radius, profileType)
-                } else {
-                    Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
-                }
+        val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_zone_editor, null)
+        val bottomSheet = BottomSheetDialog(this)
+        bottomSheet.setContentView(sheetView)
+
+        currentEditingZone = null
+        selectedProfileType = "normal"
+
+        sheetView.findViewById<TextView>(R.id.sheetTitle).text = "Create New Zone"
+        sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).text = "Create Zone"
+        sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneRadiusInput).setText(DEFAULT_RADIUS_METERS.toInt().toString())
+
+        clearProfileSelection(sheetView)
+        sheetView.findViewById<View>(R.id.radioNormal).let { (it as RadioButton).isChecked = true }
+
+        setupProfileClicks(sheetView)
+
+        sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).setOnClickListener {
+            val name = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneNameInput).text.toString().trim()
+            val radius = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneRadiusInput).text.toString().toDoubleOrNull() ?: DEFAULT_RADIUS_METERS
+
+            if (name.isNotEmpty()) {
+                bottomSheet.dismiss()
+                createZone(name, location.latitude, location.longitude, radius, selectedProfileType)
+            } else {
+                Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+
+        bottomSheet.show()
     }
 
     private fun createZone(name: String, latitude: Double, longitude: Double, radius: Double, profileType: String) {
@@ -598,46 +601,73 @@ class MapActivity : BaseActivity() {
     }
 
     private fun showEditZoneDialog(zone: Zone) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_create_zone, null)
-        val nameInput = dialogView.findViewById<EditText>(R.id.zoneNameInput)
-        val radiusInput = dialogView.findViewById<EditText>(R.id.zoneRadiusInput)
-        val profileGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.profileGroup)
-        
-        nameInput.setText(zone.name)
-        radiusInput.setText(zone.radius.toInt().toString())
-        
+        val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_zone_editor, null)
+        val bottomSheet = BottomSheetDialog(this)
+        bottomSheet.setContentView(sheetView)
+
+        currentEditingZone = zone
+        sheetView.findViewById<TextView>(R.id.sheetTitle).text = "Edit Zone"
+        sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).text = "Save Changes"
+        sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneNameInput).setText(zone.name)
+        sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneRadiusInput).setText(zone.radius.toInt().toString())
+
         val currentProfile = database.getProfile(zone.profileId)
-        val profileToSelect = when {
-            currentProfile?.dndEnabled == true -> R.id.profileDnd
-            currentProfile?.ringtoneEnabled == false && currentProfile.vibrateEnabled == true -> R.id.profileVibrate
-            currentProfile?.ringtoneEnabled == false && currentProfile.alarmsEnabled == false -> R.id.profileSilent
-            else -> R.id.profileNormal
+        selectedProfileType = when {
+            currentProfile?.dndEnabled == true -> "dnd"
+            currentProfile?.ringtoneEnabled == false && currentProfile.vibrateEnabled == true -> "vibrate"
+            currentProfile?.ringtoneEnabled == false && currentProfile.alarmsEnabled == false -> "silent"
+            else -> "normal"
         }
-        profileGroup.check(profileToSelect)
-        
-        AlertDialog.Builder(this)
-            .setTitle("Edit Zone")
-            .setView(dialogView)
-            .setPositiveButton("Save") { _, _ ->
-                val name = nameInput.text.toString().trim()
-                val radius = radiusInput.text.toString().toDoubleOrNull() ?: zone.radius
-                
-                val profileType = when (profileGroup.checkedRadioButtonId) {
-                    R.id.profileNormal -> "normal"
-                    R.id.profileSilent -> "silent"
-                    R.id.profileVibrate -> "vibrate"
-                    R.id.profileDnd -> "dnd"
-                    else -> "normal"
-                }
-                
-                if (name.isNotEmpty()) {
-                    updateZone(zone.id, name, radius, profileType)
-                } else {
-                    Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
-                }
+
+        clearProfileSelection(sheetView)
+        val radioId = when (selectedProfileType) {
+            "dnd" -> R.id.radioDnd
+            "vibrate" -> R.id.radioVibrate
+            "silent" -> R.id.radioSilent
+            else -> R.id.radioNormal
+        }
+        sheetView.findViewById<View>(radioId).let { (it as RadioButton).isChecked = true }
+
+        setupProfileClicks(sheetView)
+
+        sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).setOnClickListener {
+            val name = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneNameInput).text.toString().trim()
+            val radius = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneRadiusInput).text.toString().toDoubleOrNull() ?: zone.radius
+
+            if (name.isNotEmpty()) {
+                bottomSheet.dismiss()
+                updateZone(zone.id, name, radius, selectedProfileType)
+            } else {
+                Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+
+        bottomSheet.show()
+    }
+
+    private fun clearProfileSelection(sheetView: View) {
+        (sheetView.findViewById<View>(R.id.radioNormal) as RadioButton).isChecked = false
+        (sheetView.findViewById<View>(R.id.radioSilent) as RadioButton).isChecked = false
+        (sheetView.findViewById<View>(R.id.radioVibrate) as RadioButton).isChecked = false
+        (sheetView.findViewById<View>(R.id.radioDnd) as RadioButton).isChecked = false
+    }
+
+    private fun setupProfileClicks(sheetView: View) {
+        val profileRows = listOf(
+            Pair(R.id.profileNormal, Pair("normal", R.id.radioNormal)),
+            Pair(R.id.profileSilent, Pair("silent", R.id.radioSilent)),
+            Pair(R.id.profileVibrate, Pair("vibrate", R.id.radioVibrate)),
+            Pair(R.id.profileDnd, Pair("dnd", R.id.radioDnd)),
+        )
+
+        profileRows.forEach { (rowId, profilePair) ->
+            val (profileType, radioId) = profilePair
+            sheetView.findViewById<View>(rowId).setOnClickListener {
+                clearProfileSelection(sheetView)
+                (sheetView.findViewById<View>(radioId) as RadioButton).isChecked = true
+                selectedProfileType = profileType
+            }
+        }
     }
 
     private fun updateZone(zoneId: String, name: String, radius: Double, profileType: String) {

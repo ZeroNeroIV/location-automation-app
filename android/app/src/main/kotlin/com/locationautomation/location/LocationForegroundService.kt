@@ -233,8 +233,9 @@ class LocationForegroundService : Service() {
             } else if (previousZone != null) {
                 database.logZoneSession(previousZone.name, zoneEntryTime, System.currentTimeMillis())
                 restoreNormalMode()
-                cancelZoneNotification()
+                sendLeaveNotification(previousZone.name)
                 zoneEntryTime = 0
+                getSharedPreferences("automation_state", Context.MODE_PRIVATE).edit().remove("zone_entry_time").apply()
                 updateNotification("Location Tracking Active", "Left zone: ${previousZone.name}")
                 broadcastStateChanged("", "")
                 SoundManager.playSound(this, R.raw.error_bleep_2)
@@ -357,6 +358,25 @@ class LocationForegroundService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Welcome to $zoneName")
             .setContentText("Profile activated")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        NotificationManagerCompat.from(this).notify(ZONE_NOTIFICATION_ID, notification)
+    }
+
+    private fun sendLeaveNotification(zoneName: String) {
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Leaving $zoneName")
+            .setContentText("Bye! Profile deactivated")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

@@ -159,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
 
         btnBackToNormal.setOnClickListener(v -> {
             disableAutomation();
-            prefs.edit().putBoolean("debug_mode", false).apply();
+            prefs.edit().putBoolean("dev_mode", false).apply();
             debugTriggers.setVisibility(LinearLayout.GONE);
         });
 
@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
             automationStatus.setText(R.string.automation_off);
         }
 
-        boolean debugMode = getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("debug_mode", false);
+        boolean debugMode = getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("dev_mode", false);
         debugTriggers.setVisibility(debugMode && isEnabled ? LinearLayout.VISIBLE : LinearLayout.GONE);
         if (debugMode && isEnabled) {
             updateDebugButtons();

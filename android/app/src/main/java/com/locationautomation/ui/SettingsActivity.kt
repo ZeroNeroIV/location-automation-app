@@ -3,6 +3,9 @@ package com.locationautomation.ui
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.locationautomation.R
@@ -45,10 +48,43 @@ class SettingsActivity : BaseActivity() {
         }
 
         findViewById<MaterialSwitch>(R.id.switchDebug).apply {
-            isChecked = prefs.getBoolean("debug_mode", false)
+            isChecked = prefs.getBoolean("dev_mode", false)
             setOnCheckedChangeListener { _, isChecked ->
-                prefs.edit().putBoolean("debug_mode", isChecked).apply()
+                if (isChecked) {
+                    showPasswordDialog { correct ->
+                        if (correct) {
+                            prefs.edit().putBoolean("dev_mode", true).apply()
+                        } else {
+                            setChecked(false)
+                        }
+                    }
+                } else {
+                    prefs.edit().putBoolean("dev_mode", false).apply()
+                }
             }
         }
+    }
+
+    private fun showPasswordDialog(onResult: (Boolean) -> Unit) {
+        val input = EditText(this).apply {
+            hint = "Enter password"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Developer Mode")
+            .setMessage("Enter password to enable")
+            .setView(input)
+            .setPositiveButton("OK") { _, _ ->
+                if (input.text.toString() == "zeromama") {
+                    onResult(true)
+                } else {
+                    Toast.makeText(this, "Incorrect password", Toast.LENGTH_SHORT).show()
+                    onResult(false)
+                }
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                onResult(false)
+            }
+            .show()
     }
 }
