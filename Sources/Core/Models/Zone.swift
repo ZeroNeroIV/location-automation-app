@@ -1,7 +1,7 @@
 // Core/Models/Zone.swift
 import Foundation
 
-public enum DetectionMethod: String, Codable, CaseIterable {
+public enum DetectionMethod: String, Codable, CaseIterable, Sendable {
     case gps = "gps"
     case wifi = "wifi"
     case bluetooth = "bluetooth"
@@ -25,7 +25,7 @@ public enum ZoneValidationError: Error, LocalizedError {
     }
 }
 
-public struct Zone: Codable, Validatable {
+public struct Zone: Codable, Validatable, Sendable {
     public let id: UUID
     public var name: String
     public var latitude: Double

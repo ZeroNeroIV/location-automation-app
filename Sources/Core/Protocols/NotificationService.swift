@@ -1,6 +1,8 @@
 // Core/Protocols/NotificationService.swift
 import Foundation
+#if canImport(UserNotifications)
 import UserNotifications
+#endif
 
 public enum NotificationError: Error, LocalizedError {
     case permissionDenied

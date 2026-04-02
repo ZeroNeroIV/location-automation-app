@@ -1,6 +1,6 @@
 import Foundation
 
-public enum LogLevel: Int, Comparable, Codable {
+public enum LogLevel: Int, Comparable, Codable, Sendable {
     case debug = 0
     case info = 1
     case warning = 2
@@ -29,7 +29,7 @@ public enum LogLevel: Int, Comparable, Codable {
     }
 }
 
-public struct LoggerConfig {
+public struct LoggerConfig: Sendable {
     public var minimumLevel: LogLevel
     public var enableConsole: Bool
     public var enableFile: Bool
@@ -48,7 +48,7 @@ public struct LoggerConfig {
     }
 }
 
-public final class Logger {
+public final class Logger: @unchecked Sendable {
     public static let shared = Logger()
 
     private var config: LoggerConfig

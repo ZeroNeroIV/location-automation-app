@@ -3,7 +3,7 @@ import Foundation
 
 /// PatternTracker tracks zone entry/exit timestamps and calculates duration patterns.
 /// Maintains historical data for day-of-week pattern analysis.
-public final class PatternTracker {
+public final class PatternTracker: @unchecked Sendable {
     
     // MARK: - Singleton
     

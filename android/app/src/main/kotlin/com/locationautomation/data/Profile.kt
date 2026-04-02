@@ -8,5 +8,8 @@ data class Profile(
     val unmuteEnabled: Boolean = false,
     val dndEnabled: Boolean = false,
     val alarmsEnabled: Boolean = true,
-    val timersEnabled: Boolean = true
+    val timersEnabled: Boolean = true,
+    val wifiEnabled: Boolean = true,
+    val bluetoothEnabled: Boolean = true,
+    val mobileDataEnabled: Boolean = true
 )

@@ -33,7 +33,7 @@ public struct ZoneChangeEvent {
 }
 
 /// Active zone info
-public struct ActiveZone {
+public struct ActiveZone: Sendable {
     public let zone: Zone
     public let method: DetectionMethod
     public let detectedAt: Date
@@ -46,7 +46,7 @@ public struct ActiveZone {
 }
 
 /// Manager for prioritizing detection methods and handling zone changes
-public final class DetectionPriorityManager {
+public final class DetectionPriorityManager: @unchecked Sendable {
     public static let shared = DetectionPriorityManager()
     
     // MARK: - Configuration
@@ -269,12 +269,12 @@ public final class DetectionPriorityManager {
         let previousZone = self.activeZone
         self.activeZone = zone
         
-        // Only notify if zone actually changed
         if previousZone?.zone.id != zone.zone.id {
             Logger.shared.info("Active zone changed: \(zone.zone.name) (method: \(zone.method.rawValue))")
             
+            let zoneCopy = zone
             DispatchQueue.main.async { [weak self] in
-                self?.onZoneChanged?(zone)
+                self?.onZoneChanged?(zoneCopy)
             }
         }
     }
@@ -282,17 +282,22 @@ public final class DetectionPriorityManager {
     private func startDebounceTimer(zone: Zone, method: DetectionMethod) {
         debounceTimer?.invalidate()
         
+        let zoneId = zone.id
+        let zoneName = zone.name
+        let methodCopy = method
+        
         debounceTimer = DispatchTimer(interval: debounceInterval, queue: .main) { [weak self] in
-            self?.queue.async {
+            guard let self = self else { return }
+            self.queue.async { [weak self] in
                 guard let self = self else { return }
                 
-                if let pending = self.pendingChange, pending.zoneId == zone.id {
+                if let pending = self.pendingChange, pending.zoneId == zoneId {
                     self.pendingChange = nil
                     
-                    let newActiveZone = ActiveZone(zone: zone, method: method)
+                    let newActiveZone = ActiveZone(zone: zone, method: methodCopy)
                     self.setActiveZone(newActiveZone)
                     
-                    Logger.shared.info("Debounce completed: \(zone.name)")
+                    Logger.shared.info("Debounce completed: \(zoneName)")
                 }
             }
         }

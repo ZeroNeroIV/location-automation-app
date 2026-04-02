@@ -114,6 +114,7 @@ class MapActivity : BaseActivity() {
         mapView = findViewById(R.id.mapView)
         mapView.setTileSource(if (isDarkMode()) DARK_TILE_SOURCE else TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
+        mapView.setBuiltInZoomControls(false)
         mapView.controller.setZoom(17.0)
         
         findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.btnBack).setOnClickListener {
@@ -472,6 +473,9 @@ class MapActivity : BaseActivity() {
 
     private var currentEditingZone: Zone? = null
     private var selectedProfileType: String = "normal"
+    private var wifiEnabled: Boolean = true
+    private var bluetoothEnabled: Boolean = true
+    private var mobileDataEnabled: Boolean = true
 
     private fun showCreateZoneDialog(location: GeoPoint) {
         val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_zone_editor, null)
@@ -480,6 +484,9 @@ class MapActivity : BaseActivity() {
 
         currentEditingZone = null
         selectedProfileType = "normal"
+        wifiEnabled = true
+        bluetoothEnabled = true
+        mobileDataEnabled = true
 
         sheetView.findViewById<TextView>(R.id.sheetTitle).text = "Create New Zone"
         sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).text = "Create Zone"
@@ -489,6 +496,7 @@ class MapActivity : BaseActivity() {
         sheetView.findViewById<View>(R.id.radioNormal).let { (it as RadioButton).isChecked = true }
 
         setupProfileClicks(sheetView)
+        setupConnectivitySwitches(sheetView)
 
         sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).setOnClickListener {
             val name = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneNameInput).text.toString().trim()
@@ -496,7 +504,7 @@ class MapActivity : BaseActivity() {
 
             if (name.isNotEmpty()) {
                 bottomSheet.dismiss()
-                createZone(name, location.latitude, location.longitude, radius, selectedProfileType)
+                createZone(name, location.latitude, location.longitude, radius, selectedProfileType, wifiEnabled, bluetoothEnabled, mobileDataEnabled)
             } else {
                 Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
             }
@@ -505,7 +513,7 @@ class MapActivity : BaseActivity() {
         bottomSheet.show()
     }
 
-    private fun createZone(name: String, latitude: Double, longitude: Double, radius: Double, profileType: String) {
+    private fun createZone(name: String, latitude: Double, longitude: Double, radius: Double, profileType: String, wifi: Boolean, bluetooth: Boolean, mobileData: Boolean) {
         val profileId = UUID.randomUUID().toString()
         
         val profile = Profile(
@@ -522,7 +530,10 @@ class MapActivity : BaseActivity() {
             unmuteEnabled = false,
             dndEnabled = profileType == "dnd",
             alarmsEnabled = profileType != "silent",
-            timersEnabled = profileType != "silent"
+            timersEnabled = profileType != "silent",
+            wifiEnabled = wifi,
+            bluetoothEnabled = bluetooth,
+            mobileDataEnabled = mobileData
         )
         
         val zone = Zone(
@@ -619,6 +630,10 @@ class MapActivity : BaseActivity() {
             else -> "normal"
         }
 
+        wifiEnabled = currentProfile?.wifiEnabled ?: true
+        bluetoothEnabled = currentProfile?.bluetoothEnabled ?: true
+        mobileDataEnabled = currentProfile?.mobileDataEnabled ?: true
+
         clearProfileSelection(sheetView)
         val radioId = when (selectedProfileType) {
             "dnd" -> R.id.radioDnd
@@ -629,6 +644,7 @@ class MapActivity : BaseActivity() {
         sheetView.findViewById<View>(radioId).let { (it as RadioButton).isChecked = true }
 
         setupProfileClicks(sheetView)
+        setupConnectivitySwitches(sheetView)
 
         sheetView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSave).setOnClickListener {
             val name = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneNameInput).text.toString().trim()
@@ -636,7 +652,7 @@ class MapActivity : BaseActivity() {
 
             if (name.isNotEmpty()) {
                 bottomSheet.dismiss()
-                updateZone(zone.id, name, radius, selectedProfileType)
+                updateZone(zone.id, name, radius, selectedProfileType, wifiEnabled, bluetoothEnabled, mobileDataEnabled)
             } else {
                 Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
             }
@@ -670,7 +686,30 @@ class MapActivity : BaseActivity() {
         }
     }
 
-    private fun updateZone(zoneId: String, name: String, radius: Double, profileType: String) {
+    private fun setupConnectivitySwitches(sheetView: View) {
+        val switchWifi = sheetView.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.switchWifi)
+        val switchBluetooth = sheetView.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.switchBluetooth)
+        val switchMobileData = sheetView.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.switchMobileData)
+
+        switchWifi.isChecked = wifiEnabled
+        switchBluetooth.isChecked = bluetoothEnabled
+        switchMobileData.isChecked = mobileDataEnabled
+
+        sheetView.findViewById<View>(R.id.connectivityWifi).setOnClickListener {
+            wifiEnabled = !wifiEnabled
+            switchWifi.isChecked = wifiEnabled
+        }
+        sheetView.findViewById<View>(R.id.connectivityBluetooth).setOnClickListener {
+            bluetoothEnabled = !bluetoothEnabled
+            switchBluetooth.isChecked = bluetoothEnabled
+        }
+        sheetView.findViewById<View>(R.id.connectivityMobileData).setOnClickListener {
+            mobileDataEnabled = !mobileDataEnabled
+            switchMobileData.isChecked = mobileDataEnabled
+        }
+    }
+
+    private fun updateZone(zoneId: String, name: String, radius: Double, profileType: String, wifi: Boolean, bluetooth: Boolean, mobileData: Boolean) {
         try {
             val existingZone = zones.find { it.id == zoneId }
             if (existingZone != null) {
@@ -689,7 +728,10 @@ class MapActivity : BaseActivity() {
                     unmuteEnabled = false,
                     dndEnabled = profileType == "dnd",
                     alarmsEnabled = profileType != "silent",
-                    timersEnabled = profileType != "silent"
+                    timersEnabled = profileType != "silent",
+                    wifiEnabled = wifi,
+                    bluetoothEnabled = bluetooth,
+                    mobileDataEnabled = mobileData
                 )
                 database.saveProfile(profile)
                 

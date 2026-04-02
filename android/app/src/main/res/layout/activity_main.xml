@@ -33,6 +33,44 @@
 
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/locationText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:text="Getting location..."
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium" />
+
+    <FrameLayout
+        android:id="@+id/minimapContainer"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/circle_map_container"
+        android:clipToOutline="true">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/minimapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/addressText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"
+        android:text="Loading address..."
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="11sp" />
+
     <LinearLayout
         android:id="@+id/cardZones"
         android:layout_width="match_parent"

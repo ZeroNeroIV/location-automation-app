@@ -4,7 +4,7 @@ import Foundation
 /// DeviationDetector analyzes pattern data to detect anomalies in zone visits.
 /// Uses statistical analysis (mean, standard deviation) to identify deviations
 /// beyond the configured threshold (default 30 minutes).
-public final class DeviationDetector {
+public final class DeviationDetector: @unchecked Sendable {
     
     // MARK: - Configuration
     

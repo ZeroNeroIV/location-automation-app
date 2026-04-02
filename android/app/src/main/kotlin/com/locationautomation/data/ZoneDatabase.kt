@@ -9,7 +9,7 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
 
     companion object {
         private const val DATABASE_NAME = "location_automation.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
         
         private const val TABLE_ZONES = "zones"
         private const val TABLE_PROFILES = "profiles"
@@ -29,6 +29,9 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
         private const val COLUMN_DND_ENABLED = "dnd_enabled"
         private const val COLUMN_ALARMS_ENABLED = "alarms_enabled"
         private const val COLUMN_TIMERS_ENABLED = "timers_enabled"
+        private const val COLUMN_WIFI_ENABLED = "wifi_enabled"
+        private const val COLUMN_BLUETOOTH_ENABLED = "bluetooth_enabled"
+        private const val COLUMN_MOBILE_DATA_ENABLED = "mobile_data_enabled"
         
         // Zone time log columns
         private const val COLUMN_ZONE_NAME = "zone_name"
@@ -88,6 +91,11 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                     $COLUMN_DURATION_SECONDS INTEGER NOT NULL
                 )
             """.trimIndent())
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE $TABLE_PROFILES ADD COLUMN $COLUMN_WIFI_ENABLED INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE $TABLE_PROFILES ADD COLUMN $COLUMN_BLUETOOTH_ENABLED INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE $TABLE_PROFILES ADD COLUMN $COLUMN_MOBILE_DATA_ENABLED INTEGER NOT NULL DEFAULT 1")
         }
     }
 
@@ -186,6 +194,9 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
             put(COLUMN_DND_ENABLED, if (profile.dndEnabled) 1 else 0)
             put(COLUMN_ALARMS_ENABLED, if (profile.alarmsEnabled) 1 else 0)
             put(COLUMN_TIMERS_ENABLED, if (profile.timersEnabled) 1 else 0)
+            put(COLUMN_WIFI_ENABLED, if (profile.wifiEnabled) 1 else 0)
+            put(COLUMN_BLUETOOTH_ENABLED, if (profile.bluetoothEnabled) 1 else 0)
+            put(COLUMN_MOBILE_DATA_ENABLED, if (profile.mobileDataEnabled) 1 else 0)
         }
         db.insertWithOnConflict(TABLE_PROFILES, null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
@@ -210,7 +221,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                     unmuteEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_UNMUTE_ENABLED)) == 1,
                     dndEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_DND_ENABLED)) == 1,
                     alarmsEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_ALARMS_ENABLED)) == 1,
-                    timersEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_TIMERS_ENABLED)) == 1
+                    timersEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_TIMERS_ENABLED)) == 1,
+                    wifiEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_WIFI_ENABLED)) == 1,
+                    bluetoothEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_BLUETOOTH_ENABLED)) == 1,
+                    mobileDataEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_MOBILE_DATA_ENABLED)) == 1
                 )
             }
         }
@@ -232,7 +246,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                     unmuteEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_UNMUTE_ENABLED)) == 1,
                     dndEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_DND_ENABLED)) == 1,
                     alarmsEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_ALARMS_ENABLED)) == 1,
-                    timersEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_TIMERS_ENABLED)) == 1
+                    timersEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_TIMERS_ENABLED)) == 1,
+                    wifiEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_WIFI_ENABLED)) == 1,
+                    bluetoothEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_BLUETOOTH_ENABLED)) == 1,
+                    mobileDataEnabled = it.getInt(it.getColumnIndexOrThrow(COLUMN_MOBILE_DATA_ENABLED)) == 1
                 )
                 profiles.add(profile)
             }

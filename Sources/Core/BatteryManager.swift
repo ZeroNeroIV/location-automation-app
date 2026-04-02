@@ -292,7 +292,7 @@ public struct GeofenceBatchConfig {
 
 // MARK: - Battery Manager
 
-public final class BatteryManager {
+public final class BatteryManager: @unchecked Sendable {
     
     public static let shared = BatteryManager()
     

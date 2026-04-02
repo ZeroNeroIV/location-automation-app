@@ -4,7 +4,7 @@ import SQLite
 
 /// DatabaseManager handles all SQLite database operations for Zone, Profile, and Pattern persistence.
 /// Cross-platform compatible (iOS + Android/Linux).
-public final class DatabaseManager {
+public final class DatabaseManager: @unchecked Sendable {
     
     // MARK: - Singleton
     
@@ -54,6 +54,7 @@ public final class DatabaseManager {
         case encodingFailed
         case decodingFailed
         case storageFull
+        case invalidData
         
         public var errorDescription: String? {
             switch self {
@@ -69,6 +70,8 @@ public final class DatabaseManager {
                 return "Failed to decode data"
             case .storageFull:
                 return "Storage is full - please free up space"
+            case .invalidData:
+                return "Invalid data in database"
             }
         }
     }
@@ -273,15 +276,15 @@ public final class DatabaseManager {
     
     private func rowToZone(_ row: Row) throws -> Zone {
         let id = UUID(uuidString: row[zoneId])!
-        let name = row[zoneName]
-        let latitude = row[zoneLatitude]
-        let longitude = row[zoneLongitude]
-        let radius = row[zoneRadius]
-        let detectionMethodsString = row[zoneDetectionMethods]
+        let name: String = row[zoneName]
+        let latitude: Double = row[zoneLatitude]
+        let longitude: Double = row[zoneLongitude]
+        let radius: Double = row[zoneRadius]
+        let detectionMethodsString: String? = row[zoneDetectionMethods]
         let profileIdUuid = UUID(uuidString: row[zoneProfileId])!
         
         var detectionMethods: [DetectionMethod] = []
-        if let data = detectionMethodsString.data(using: .utf8) {
+        if let dmStr = detectionMethodsString, let data = dmStr.data(using: String.Encoding.utf8) {
             detectionMethods = (try? JSONDecoder().decode([DetectionMethod].self, from: data)) ?? []
         }
         
@@ -472,17 +475,25 @@ public final class DatabaseManager {
         var durations: [TimeInterval] = []
         var dates: [Date] = []
         
-        if let data = row[patternEntryTimes].data(using: .utf8) {
-            entryTimes = (try? JSONDecoder().decode([Date].self, from: data)) ?? []
+        if let entryStr: String = row[patternEntryTimes] {
+            if let data = entryStr.data(using: String.Encoding.utf8) {
+                entryTimes = (try? JSONDecoder().decode([Date].self, from: data)) ?? []
+            }
         }
-        if let data = row[patternExitTimes].data(using: .utf8) {
-            exitTimes = (try? JSONDecoder().decode([Date].self, from: data)) ?? []
+        if let exitStr: String = row[patternExitTimes] {
+            if let data = exitStr.data(using: String.Encoding.utf8) {
+                exitTimes = (try? JSONDecoder().decode([Date].self, from: data)) ?? []
+            }
         }
-        if let data = row[patternDurations].data(using: .utf8) {
-            durations = (try? JSONDecoder().decode([TimeInterval].self, from: data)) ?? []
+        if let durationStr: String = row[patternDurations] {
+            if let data = durationStr.data(using: String.Encoding.utf8) {
+                durations = (try? JSONDecoder().decode([TimeInterval].self, from: data)) ?? []
+            }
         }
-        if let data = row[patternDates].data(using: .utf8) {
-            dates = (try? JSONDecoder().decode([Date].self, from: data)) ?? []
+        if let datesStr: String = row[patternDates] {
+            if let data = datesStr.data(using: String.Encoding.utf8) {
+                dates = (try? JSONDecoder().decode([Date].self, from: data)) ?? []
+            }
         }
         
         return Pattern(
@@ -509,14 +520,17 @@ public final class DatabaseManager {
             throw DatabaseError.connectionFailed
         }
         
-        try db.run(decisions.create(ifNotExists: true) { t in
-            t.column(decisionId, primaryKey: true)
-            t.column(decisionSuggestionId)
-            t.column(decisionSuggestionType)
-            t.column(decisionType)
-            t.column(decisionTimestamp)
-            t.column(decisionMessage)
-        })
+        let createSQL = """
+            CREATE TABLE IF NOT EXISTS suggestion_decisions (
+                id TEXT PRIMARY KEY,
+                suggestion_id TEXT NOT NULL,
+                suggestion_type TEXT NOT NULL,
+                decision_type TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                suggestion_message TEXT NOT NULL
+            )
+            """
+        try db.execute(createSQL)
     }
     
     public func saveDecision(_ decision: SuggestionDecision) throws {
@@ -605,12 +619,19 @@ public final class DatabaseManager {
     }
     
     private func rowToDecision(_ row: Row) throws -> SuggestionDecision {
-        let id = UUID(uuidString: row[decisionId])!
-        let suggestionId = UUID(uuidString: row[decisionSuggestionId])!
-        let suggestionType = SuggestionType(rawValue: row[decisionSuggestionType])!
-        let decision = DecisionType(rawValue: row[decisionType])!
+        guard let idStr: String = row[decisionId],
+              let id = UUID(uuidString: idStr),
+              let suggestionIdStr: String = row[decisionSuggestionId],
+              let suggestionId = UUID(uuidString: suggestionIdStr),
+              let suggestionTypeStr: String = row[decisionSuggestionType],
+              let suggestionType = SuggestionType(rawValue: suggestionTypeStr),
+              let decisionStr: String = row[decisionType],
+              let decision = DecisionType(rawValue: decisionStr),
+              let message: String = row[decisionMessage] else {
+            throw DatabaseError.invalidData
+        }
+        
         let timestamp = Date(timeIntervalSince1970: row[decisionTimestamp])
-        let message = row[decisionMessage]
         
         return SuggestionDecision(
             id: id,

@@ -4,7 +4,7 @@ import Foundation
 /// SuggestionGenerator analyzes patterns and deviations to generate smart suggestions
 /// for profile changes, zone creation, and zone deletion.
 /// Rate limited to 1 suggestion per day to avoid notification fatigue.
-public final class SuggestionGenerator {
+public final class SuggestionGenerator: @unchecked Sendable {
     
     // MARK: - Singleton
     

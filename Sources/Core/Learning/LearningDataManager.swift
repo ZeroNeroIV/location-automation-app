@@ -3,7 +3,7 @@ import Foundation
 
 /// LearningDataManager handles data migration, cleanup, and backup for learning data.
 /// Provides version-based migrations and scheduled maintenance operations.
-public final class LearningDataManager {
+public final class LearningDataManager: @unchecked Sendable {
     
     // MARK: - Singleton
     

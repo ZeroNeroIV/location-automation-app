@@ -73,6 +73,9 @@ class LocationForegroundService : Service() {
     
     private var savedRingerMode: Int = AudioManager.RINGER_MODE_NORMAL
     private var savedInterruptionFilter: Int = NotificationManager.INTERRUPTION_FILTER_ALL
+    private var savedWifiEnabled: Boolean = true
+    private var savedBluetoothEnabled: Boolean = true
+    private var savedMobileDataEnabled: Boolean = true
     private var stateCaptured: Boolean = false
 
     private val locationCallback = object : android.location.LocationListener {
@@ -129,7 +132,9 @@ class LocationForegroundService : Service() {
         } catch (e: Exception) {
             null
         }
+        captureConnectivityState()
         applyProfile(profile)
+        if (profile != null) applyConnectivity(profile)
         currentProfile = profile
         sendZoneNotification(targetZone.name)
         updateNotification("Zone: ${targetZone.name}", "Profile: ${profile?.name ?: "Normal"}")
@@ -222,7 +227,9 @@ class LocationForegroundService : Service() {
                     android.util.Log.e("LocationService", "Failed to load profile", e)
                     return
                 }
+                captureConnectivityState()
                 applyProfile(profile)
+                profile?.let { applyConnectivity(it) }
                 currentProfile = profile
                 zoneEntryTime = System.currentTimeMillis()
                 sendZoneNotification(insideZone.name)
@@ -305,26 +312,194 @@ class LocationForegroundService : Service() {
         }
     }
 
-    private fun restoreNormalMode() {
+    private fun captureConnectivityState() {
         try {
-            audioManager.ringerMode = if (stateCaptured) savedRingerMode else AudioManager.RINGER_MODE_NORMAL
+            val wifiManager = getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            savedWifiEnabled = wifiManager.isWifiEnabled
         } catch (e: Exception) {
-            android.util.Log.e("LocationService", "Failed to restore ringer mode", e)
+            android.util.Log.e("LocationService", "Failed to capture WiFi state", e)
         }
 
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            savedBluetoothEnabled = bluetoothAdapter?.isEnabled ?: false
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to capture Bluetooth state", e)
+        }
+
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            savedMobileDataEnabled = connectivityManager.isActiveNetworkMetered
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to capture mobile data state", e)
+        }
+
+        android.util.Log.d("LocationService", "Connectivity state captured: wifi=$savedWifiEnabled, bt=$savedBluetoothEnabled, mobileData=$savedMobileDataEnabled")
+    }
+
+    private fun applyConnectivity(profile: Profile) {
+        try {
+            val wifiManager = getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            if (wifiManager.isWifiEnabled != profile.wifiEnabled) {
+                wifiManager.isWifiEnabled = profile.wifiEnabled
+                android.util.Log.d("LocationService", "WiFi ${if (profile.wifiEnabled) "enabled" else "disabled"}")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to toggle WiFi", e)
+        }
+
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter != null) {
+                when {
+                    profile.bluetoothEnabled && !bluetoothAdapter.isEnabled -> {
+                        bluetoothAdapter.enable()
+                        android.util.Log.d("LocationService", "Bluetooth enabled")
+                    }
+                    !profile.bluetoothEnabled && bluetoothAdapter.isEnabled -> {
+                        bluetoothAdapter.disable()
+                        android.util.Log.d("LocationService", "Bluetooth disabled")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to toggle Bluetooth", e)
+        }
+
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val method = connectivityManager::class.java.getDeclaredMethod(
+                "setMobileDataEnabled",
+                Boolean::class.javaPrimitiveType
+            )
+            method.isAccessible = true
+            method.invoke(connectivityManager, profile.mobileDataEnabled)
+            android.util.Log.d("LocationService", "Mobile data ${if (profile.mobileDataEnabled) "enabled" else "disabled"}")
+        } catch (e: NoSuchMethodException) {
+            android.util.Log.w("LocationService", "Mobile data toggle not available on Android 5.0+ (reflection failed)")
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to toggle mobile data", e)
+        }
+    }
+
+    private fun restoreConnectivity() {
+        try {
+            val wifiManager = getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            if (wifiManager.isWifiEnabled != savedWifiEnabled) {
+                wifiManager.isWifiEnabled = savedWifiEnabled
+                android.util.Log.d("LocationService", "WiFi restored to $savedWifiEnabled")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore WiFi", e)
+        }
+
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter != null) {
+                when {
+                    savedBluetoothEnabled && !bluetoothAdapter.isEnabled -> {
+                        bluetoothAdapter.enable()
+                        android.util.Log.d("LocationService", "Bluetooth restored to enabled")
+                    }
+                    !savedBluetoothEnabled && bluetoothAdapter.isEnabled -> {
+                        bluetoothAdapter.disable()
+                        android.util.Log.d("LocationService", "Bluetooth restored to disabled")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore Bluetooth", e)
+        }
+
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val method = connectivityManager::class.java.getDeclaredMethod(
+                "setMobileDataEnabled",
+                Boolean::class.javaPrimitiveType
+            )
+            method.isAccessible = true
+            method.invoke(connectivityManager, savedMobileDataEnabled)
+            android.util.Log.d("LocationService", "Mobile data restored to $savedMobileDataEnabled")
+        } catch (e: NoSuchMethodException) {
+            android.util.Log.w("LocationService", "Mobile data restore not available on Android 5.0+")
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore mobile data", e)
+        }
+    }
+
+    private fun restoreNormalMode() {
+        val prefs = getSharedPreferences("default_phone_state", Context.MODE_PRIVATE)
+        
+        val defaultRingtone = prefs.getBoolean("default_ringtone", true)
+        val defaultVibrate = prefs.getBoolean("default_vibrate", true)
+        val defaultDnd = prefs.getBoolean("default_dnd", false)
+        val defaultWifi = prefs.getBoolean("default_wifi", true)
+        val defaultBluetooth = prefs.getBoolean("default_bluetooth", true)
+        val defaultMobileData = prefs.getBoolean("default_mobile_data", true)
+        
+        // Apply DND
         try {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (notificationManager.isNotificationPolicyAccessGranted) {
-                val filter = if (stateCaptured) savedInterruptionFilter else NotificationManager.INTERRUPTION_FILTER_ALL
-                notificationManager.setInterruptionFilter(filter)
+                notificationManager.setInterruptionFilter(
+                    if (defaultDnd) NotificationManager.INTERRUPTION_FILTER_NONE
+                    else NotificationManager.INTERRUPTION_FILTER_ALL
+                )
             }
         } catch (e: Exception) {
-            android.util.Log.e("LocationService", "Failed to restore DND", e)
+            android.util.Log.e("LocationService", "Failed to set DND on restore", e)
         }
-
-        savedRingerMode = AudioManager.RINGER_MODE_NORMAL
-        savedInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL
-        stateCaptured = false
+        
+        // Apply ringer mode
+        val ringerMode = when {
+            defaultDnd -> AudioManager.RINGER_MODE_SILENT
+            defaultRingtone -> AudioManager.RINGER_MODE_NORMAL
+            defaultVibrate -> AudioManager.RINGER_MODE_VIBRATE
+            else -> AudioManager.RINGER_MODE_SILENT
+        }
+        try {
+            audioManager.ringerMode = ringerMode
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore ringer mode", e)
+        }
+        
+        // Apply connectivity defaults
+        try {
+            val wifiManager = getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            if (wifiManager.isWifiEnabled != defaultWifi) {
+                wifiManager.isWifiEnabled = defaultWifi
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore WiFi", e)
+        }
+        
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter != null) {
+                when {
+                    defaultBluetooth && !bluetoothAdapter.isEnabled -> bluetoothAdapter.enable()
+                    !defaultBluetooth && bluetoothAdapter.isEnabled -> bluetoothAdapter.disable()
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore Bluetooth", e)
+        }
+        
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val method = connectivityManager::class.java.getDeclaredMethod(
+                "setMobileDataEnabled",
+                Boolean::class.javaPrimitiveType
+            )
+            method.isAccessible = true
+            method.invoke(connectivityManager, defaultMobileData)
+        } catch (e: NoSuchMethodException) {
+            android.util.Log.w("LocationService", "Mobile data toggle not available on Android 5.0+")
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore mobile data", e)
+        }
+        
+        android.util.Log.d("LocationService", "Restored default state: ringtone=$defaultRingtone, vibrate=$defaultVibrate, dnd=$defaultDnd, wifi=$defaultWifi, bt=$defaultBluetooth, mobileData=$defaultMobileData")
     }
 
     fun updateNotification(title: String, text: String) {
@@ -426,5 +601,11 @@ class LocationForegroundService : Service() {
         }
         stopLocationUpdates()
         restoreNormalMode()
+        getSharedPreferences("automation_state", Context.MODE_PRIVATE).edit().apply {
+            remove("current_zone")
+            remove("current_profile")
+            remove("zone_entry_time")
+            apply()
+        }
     }
 }

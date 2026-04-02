@@ -2,6 +2,21 @@
 
 A cross-platform mobile application (iOS + Android) that automatically switches phone profiles based on geographical zones with on-device ML learning.
 
+## Release Notes
+
+### v2.0 (Major Release)
+- **Circular Minimap**: New home screen minimap showing current location with zone overlays
+- **Location Display**: Live coordinates and reverse-geocoded address on home screen
+- **Zone Activity Graph**: Visual representation of time spent in each zone (day/week views)
+- **Hidden Zoom Controls**: Clean, non-interactive map displays on home screen
+- **Dark Theme Toggle**: User-configurable dark mode in Settings
+
+### v1.0 (Initial Release)
+- Zone creation and management with GPS/WiFi/Bluetooth detection
+- Profile system (Normal, Silent, Vibrate, DND modes)
+- Automatic profile switching based on location
+- Material3 UI with modern design
+
 ## Features
 
 - **Zone Management**: Create, edit, and delete geographical zones with GPS/WiFi/Bluetooth detection

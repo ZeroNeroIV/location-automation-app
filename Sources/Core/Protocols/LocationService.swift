@@ -1,6 +1,21 @@
 // Core/Protocols/LocationService.swift
 import Foundation
+#if canImport(CoreLocation)
 import CoreLocation
+#endif
+
+#if canImport(CoreLocation)
+public typealias LocationType = CLLocation
+#else
+public struct LocationType {
+    public let coordinate: (latitude: Double, longitude: Double)
+    public let timestamp: Date
+    public init(latitude: Double, longitude: Double, timestamp: Date = Date()) {
+        self.coordinate = (latitude, longitude)
+        self.timestamp = timestamp
+    }
+}
+#endif
 
 public enum LocationError: Error, LocalizedError {
     case locationUnavailable
@@ -26,22 +41,13 @@ public enum LocationError: Error, LocalizedError {
 }
 
 public protocol LocationServiceProtocol: AnyObject {
-    /// The primary detection method used by the service
     var detectionMethod: DetectionMethod { get }
     
-    /// Gets the current device location
-    func getCurrentLocation() async throws -> CLLocation
+    func getCurrentLocation() async throws -> LocationType
     
-    /// Starts monitoring a specific zone
     func startMonitoring(zone: Zone) async throws
-    
-    /// Stops monitoring a specific zone
     func stopMonitoring(zone: Zone) async throws
-    
-    /// Requests location permission from the user
     func requestPermission() async throws -> Bool
-    
-    /// Checks if location services are authorized
     func isAuthorized() -> Bool
 }
 
@@ -50,25 +56,15 @@ public extension LocationServiceProtocol {
         .gps
     }
     
-    func isAuthorized() -> Bool {
-        false
-    }
+    func isAuthorized() -> Bool { false }
 
-    var effectiveDetectionMethod: DetectionMethod {
-        detectionMethod
-    }
+    var effectiveDetectionMethod: DetectionMethod { detectionMethod }
 
-    func checkLocationAccuracy(_ location: CLLocation) -> Bool {
-        true
-    }
+    func checkLocationAccuracy(_ location: LocationType) -> Bool { true }
 
-    func isGpsReliable() -> Bool {
-        true
-    }
+    func isGpsReliable() -> Bool { true }
 
-    func getFallbackMethod() -> DetectionMethod {
-        .wifi
-    }
+    func getFallbackMethod() -> DetectionMethod { .wifi }
 
     func resetGpsReliability() {}
 }
