@@ -69,6 +69,10 @@ class LocationForegroundService : Service() {
     private var currentZone: Zone? = null
     private var currentProfile: Profile? = null
     private var zoneEntryTime: Long = 0
+    
+    private var savedRingerMode: Int = AudioManager.RINGER_MODE_NORMAL
+    private var savedInterruptionFilter: Int = NotificationManager.INTERRUPTION_FILTER_ALL
+    private var stateCaptured: Boolean = false
 
     private val locationCallback = object : android.location.LocationListener {
         override fun onLocationChanged(location: android.location.Location) {
@@ -237,6 +241,18 @@ class LocationForegroundService : Service() {
     }
 
     private fun applyProfile(profile: Profile?) {
+        if (!stateCaptured) {
+            savedRingerMode = audioManager.ringerMode
+            try {
+                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                savedInterruptionFilter = notificationManager.currentInterruptionFilter
+            } catch (e: Exception) {
+                android.util.Log.e("LocationService", "Failed to capture interruption filter", e)
+            }
+            stateCaptured = true
+            android.util.Log.d("LocationService", "State captured: ringer=$savedRingerMode, dnd=$savedInterruptionFilter")
+        }
+
         if (profile == null) {
             restoreNormalMode()
             return
@@ -281,19 +297,24 @@ class LocationForegroundService : Service() {
 
     private fun restoreNormalMode() {
         try {
+            audioManager.ringerMode = if (stateCaptured) savedRingerMode else AudioManager.RINGER_MODE_NORMAL
+        } catch (e: Exception) {
+            android.util.Log.e("LocationService", "Failed to restore ringer mode", e)
+        }
+
+        try {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (notificationManager.isNotificationPolicyAccessGranted) {
-                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+                val filter = if (stateCaptured) savedInterruptionFilter else NotificationManager.INTERRUPTION_FILTER_ALL
+                notificationManager.setInterruptionFilter(filter)
             }
         } catch (e: Exception) {
             android.util.Log.e("LocationService", "Failed to restore DND", e)
         }
 
-        try {
-            audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
-        } catch (e: Exception) {
-            android.util.Log.e("LocationService", "Failed to restore ringer mode", e)
-        }
+        savedRingerMode = AudioManager.RINGER_MODE_NORMAL
+        savedInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL
+        stateCaptured = false
     }
 
     fun updateNotification(title: String, text: String) {

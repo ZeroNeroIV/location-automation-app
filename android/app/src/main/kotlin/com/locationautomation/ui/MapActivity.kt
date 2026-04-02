@@ -8,10 +8,10 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,7 +31,11 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.util.UUID
+import org.json.JSONArray
 
 class MapActivity : BaseActivity() {
 
@@ -65,8 +69,9 @@ class MapActivity : BaseActivity() {
     private lateinit var longPressOverlay: org.osmdroid.views.overlay.Overlay
     private var debugMode = false
     private var selectedZoneForMove: Zone? = null
-    private var searchAdapter: ArrayAdapter<String>? = null
     private var searchZoneMap: MutableMap<String, Zone> = mutableMapOf()
+    private var searchPlaceMap: MutableMap<String, GeoPoint> = mutableMapOf()
+    private var searchJob: Thread? = null
     private val locationListener = object : android.location.LocationListener {
         override fun onLocationChanged(location: android.location.Location) {
             updateUserLocation(location)
@@ -316,15 +321,15 @@ class MapActivity : BaseActivity() {
     }
 
     private fun setupSearch() {
-        val searchInput = findViewById<AutoCompleteTextView>(R.id.searchInput)
+        val searchInput = findViewById<EditText>(R.id.searchInput)
         val btnClear = findViewById<ImageButton>(R.id.btnClearSearch)
+        val resultsCard = findViewById<com.google.android.material.card.MaterialCardView>(R.id.searchResultsCard)
+        val resultsList = findViewById<LinearLayout>(R.id.searchResultsList)
         
-        searchInput.textDirection = View.TEXT_DIRECTION_RTL
-        searchInput.gravity = android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL
-        
-        searchAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, emptyList<String>())
-        searchAdapter?.setDropDownViewResource(android.R.layout.simple_dropdown_item_1line)
-        searchInput.setAdapter(searchAdapter)
+        searchInput.setOnFocusChangeListener { _, hasFocus ->
+            mapView.isClickable = !hasFocus
+            mapView.isEnabled = !hasFocus
+        }
         
         searchInput.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -333,62 +338,134 @@ class MapActivity : BaseActivity() {
                 val query = s?.toString()?.trim() ?: ""
                 btnClear.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
                 
+                resultsList.removeAllViews()
+                searchZoneMap.clear()
+                searchPlaceMap.clear()
+                
                 if (query.isEmpty()) {
-                    searchAdapter?.clear()
-                    searchZoneMap.clear()
+                    resultsCard.visibility = View.GONE
                     return
                 }
                 
-                val matches = zones.filter { it.name.contains(query, ignoreCase = true) }
-                searchZoneMap.clear()
-                val names = matches.map { it.name }
-                matches.forEach { searchZoneMap[it.name] = it }
-                
-                searchAdapter?.clear()
-                searchAdapter?.addAll(names)
-                searchAdapter?.notifyDataSetChanged()
-                
-                if (matches.size == 1 && query.length >= 2) {
-                    searchInput.setText(matches[0].name)
-                    searchInput.clearFocus()
-                    navigateToZone(matches[0])
+                if (query.length < 2) {
+                    resultsCard.visibility = View.GONE
+                    return
                 }
+                
+                val zoneMatches = zones.filter { it.name.contains(query, ignoreCase = true) }
+                
+                zoneMatches.forEach { zone ->
+                    searchZoneMap[zone.name] = zone
+                    val textView = TextView(this@MapActivity).apply {
+                        text = zone.name
+                        textSize = 14f
+                        setTextColor(getColorCompat(R.color.on_surface))
+                        setPadding(32, 24, 32, 24)
+                        setBackgroundResource(android.R.drawable.list_selector_background)
+                        setOnClickListener {
+                            searchInput.setText("")
+                            searchInput.clearFocus()
+                            resultsCard.visibility = View.GONE
+                            navigateToZone(zone)
+                        }
+                    }
+                    resultsList.addView(textView)
+                }
+                
+                searchJob?.interrupt()
+                searchJob = Thread {
+                    try {
+                        val encoded = URLEncoder.encode(query, "UTF-8")
+                        val url = URL("https://nominatim.openstreetmap.org/search?format=json&q=$encoded&limit=5&addressdetails=1")
+                        val conn = url.openConnection() as HttpURLConnection
+                        conn.requestMethod = "GET"
+                        conn.setRequestProperty("User-Agent", "LocationAutomationApp/1.0")
+                        conn.connectTimeout = 5000
+                        conn.readTimeout = 5000
+                        
+                        if (conn.responseCode == 200) {
+                            val body = conn.inputStream.bufferedReader().use { it.readText() }
+                            val places = JSONArray(body)
+                            
+                            runOnUiThread {
+                                if (places.length() > 0) {
+                                    if (zoneMatches.isNotEmpty()) {
+                                        val divider = TextView(this@MapActivity).apply {
+                                            text = "Places"
+                                            textSize = 11f
+                                            setTextColor(getColorCompat(R.color.on_surface_secondary))
+                                            setPadding(32, 16, 32, 8)
+                                        }
+                                        resultsList.addView(divider)
+                                    }
+                                    
+                                    for (i in 0 until places.length()) {
+                                        val place = places.getJSONObject(i)
+                                        val displayName = place.getString("display_name")
+                                        val shortName = if (displayName.length > 60) displayName.take(60) + "…" else displayName
+                                        val lat = place.getString("lat").toDouble()
+                                        val lon = place.getString("lon").toDouble()
+                                        val geoPoint = GeoPoint(lat, lon)
+                                        searchPlaceMap[shortName] = geoPoint
+                                        
+                                        val textView = TextView(this@MapActivity).apply {
+                                            text = shortName
+                                            textSize = 13f
+                                            setTextColor(getColorCompat(R.color.on_surface_secondary))
+                                            setPadding(32, 20, 32, 20)
+                                            setBackgroundResource(android.R.drawable.list_selector_background)
+                                            setOnClickListener {
+                                                searchInput.setText("")
+                                                searchInput.clearFocus()
+                                                resultsCard.visibility = View.GONE
+                                                mapView.controller.setCenter(geoPoint)
+                                                mapView.controller.setZoom(17.0)
+                                            }
+                                        }
+                                        resultsList.addView(textView)
+                                    }
+                                }
+                                resultsCard.visibility = View.VISIBLE
+                            }
+                        }
+                    } catch (_: InterruptedException) {
+                    } catch (e: Exception) {
+                        android.util.Log.e("MapActivity", "Nominatim search failed", e)
+                        runOnUiThread {
+                            resultsCard.visibility = View.VISIBLE
+                        }
+                    }
+                }.also { it.start() }
             }
         })
         
-        searchInput.setOnItemClickListener { _, _, position, _ ->
-            val selectedName = searchInput.adapter.getItem(position) as String
-            searchZoneMap[selectedName]?.let { zone ->
-                navigateToZone(zone)
-            }
-            searchInput.clearFocus()
-        }
-        
         btnClear.setOnClickListener {
             searchInput.setText("")
-            searchInput.clearFocus()
+            resultsCard.visibility = View.GONE
+            resultsList.removeAllViews()
+            searchZoneMap.clear()
         }
+    }
+    
+    private fun getColorCompat(colorRes: Int): Int {
+        return ContextCompat.getColor(this, colorRes)
     }
     
     private fun navigateToZone(zone: Zone) {
         val center = GeoPoint(zone.latitude, zone.longitude)
-        mapView.controller.animateTo(center)
+        mapView.controller.setCenter(center)
         mapView.controller.setZoom(17.0)
         showZoneOptionsDialog(zone)
     }
     
     private fun updateSearchAdapter() {
-        val searchInput = findViewById<AutoCompleteTextView>(R.id.searchInput)
+        val searchInput = findViewById<EditText>(R.id.searchInput)
         val currentQuery = searchInput.text.toString().trim()
         
         if (currentQuery.isNotEmpty()) {
             val matches = zones.filter { it.name.contains(currentQuery, ignoreCase = true) }
             searchZoneMap.clear()
-            val names = matches.map { it.name }
             matches.forEach { searchZoneMap[it.name] = it }
-            searchAdapter?.clear()
-            searchAdapter?.addAll(names)
-            searchAdapter?.notifyDataSetChanged()
         }
     }
 
