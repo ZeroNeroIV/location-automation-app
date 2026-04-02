@@ -20,12 +20,14 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.locationautomation.data.Zone;
 import com.locationautomation.data.ZoneDatabase;
 import com.locationautomation.location.LocationForegroundService;
 import com.locationautomation.ui.SettingsActivity;
 import com.locationautomation.ui.ZoneListActivity;
+import com.locationautomation.ui.ZoneTimeGraphView;
 import com.locationautomation.util.SoundManager;
 
 import java.util.List;
@@ -64,6 +66,10 @@ public class MainActivity extends AppCompatActivity {
     private Handler timerHandler;
     private Runnable timerRunnable;
     private ZoneDatabase database;
+    private ZoneTimeGraphView zoneTimeGraph;
+    private MaterialButton btnDayView;
+    private MaterialButton btnWeekView;
+    private boolean showWeekly = false;
 
     private final BroadcastReceiver stateReceiver = new BroadcastReceiver() {
         @Override
@@ -106,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         updateAutomationSwitchState();
         updateTimerDisplay();
         updateDebugButtons();
+        loadZoneTimeData();
 
         IntentFilter filter = new IntentFilter(LocationForegroundService.BROADCAST_STATE_CHANGED);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -133,6 +140,22 @@ public class MainActivity extends AppCompatActivity {
         debugTriggers = findViewById(R.id.debugTriggers);
         debugButtonsContainer = findViewById(R.id.debugButtonsContainer);
         btnBackToNormal = findViewById(R.id.btnBackToNormal);
+        zoneTimeGraph = findViewById(R.id.zoneTimeGraph);
+        btnDayView = findViewById(R.id.btnDayView);
+        btnWeekView = findViewById(R.id.btnWeekView);
+
+        btnDayView.setOnClickListener(v -> {
+            showWeekly = false;
+            updateGraphButtons();
+            loadZoneTimeData();
+        });
+        btnWeekView.setOnClickListener(v -> {
+            showWeekly = true;
+            updateGraphButtons();
+            loadZoneTimeData();
+        });
+
+        updateGraphButtons();
 
         btnBackToNormal.setOnClickListener(v -> {
             disableAutomation();
@@ -280,5 +303,24 @@ public class MainActivity extends AppCompatActivity {
                 notificationPermissionLauncher.launch(new String[]{Manifest.permission.POST_NOTIFICATIONS});
             }
         }
+    }
+
+    private void updateGraphButtons() {
+        if (showWeekly) {
+            btnWeekView.setStrokeWidth(0);
+            btnDayView.setStrokeWidth(1);
+        } else {
+            btnDayView.setStrokeWidth(0);
+            btnWeekView.setStrokeWidth(1);
+        }
+    }
+
+    private void loadZoneTimeData() {
+        new Thread(() -> {
+            var buckets = showWeekly ? database.getWeeklyZoneTime() : database.getDailyZoneTime();
+            runOnUiThread(() -> {
+                zoneTimeGraph.setData(buckets);
+            });
+        }).start();
     }
 }

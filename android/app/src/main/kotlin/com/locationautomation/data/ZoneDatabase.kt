@@ -9,10 +9,11 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
 
     companion object {
         private const val DATABASE_NAME = "location_automation.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
         
         private const val TABLE_ZONES = "zones"
         private const val TABLE_PROFILES = "profiles"
+        private const val TABLE_ZONE_TIME_LOG = "zone_time_log"
         private const val COLUMN_ID = "id"
         private const val COLUMN_NAME = "name"
         private const val COLUMN_LATITUDE = "latitude"
@@ -28,6 +29,12 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
         private const val COLUMN_DND_ENABLED = "dnd_enabled"
         private const val COLUMN_ALARMS_ENABLED = "alarms_enabled"
         private const val COLUMN_TIMERS_ENABLED = "timers_enabled"
+        
+        // Zone time log columns
+        private const val COLUMN_ZONE_NAME = "zone_name"
+        private const val COLUMN_ENTRY_TIME = "entry_time"
+        private const val COLUMN_EXIT_TIME = "exit_time"
+        private const val COLUMN_DURATION_SECONDS = "duration_seconds"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -57,12 +64,31 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
             )
         """.trimIndent()
         db.execSQL(createProfilesTable)
+
+        val createTimeLogTable = """
+            CREATE TABLE $TABLE_ZONE_TIME_LOG (
+                $COLUMN_ID TEXT PRIMARY KEY,
+                $COLUMN_ZONE_NAME TEXT NOT NULL,
+                $COLUMN_ENTRY_TIME INTEGER NOT NULL,
+                $COLUMN_EXIT_TIME INTEGER NOT NULL,
+                $COLUMN_DURATION_SECONDS INTEGER NOT NULL
+            )
+        """.trimIndent()
+        db.execSQL(createTimeLogTable)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_ZONES")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_PROFILES")
-        onCreate(db)
+        if (oldVersion < 2) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS $TABLE_ZONE_TIME_LOG (
+                    $COLUMN_ID TEXT PRIMARY KEY,
+                    $COLUMN_ZONE_NAME TEXT NOT NULL,
+                    $COLUMN_ENTRY_TIME INTEGER NOT NULL,
+                    $COLUMN_EXIT_TIME INTEGER NOT NULL,
+                    $COLUMN_DURATION_SECONDS INTEGER NOT NULL
+                )
+            """.trimIndent())
+        }
     }
 
     fun saveZone(zone: Zone) {
@@ -217,5 +243,76 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
     fun deleteProfile(id: String) {
         val db = writableDatabase
         db.delete(TABLE_PROFILES, "$COLUMN_ID = ?", arrayOf(id))
+    }
+
+    fun logZoneSession(zoneName: String, entryTime: Long, exitTime: Long) {
+        val duration = (exitTime - entryTime) / 1000
+        if (duration <= 0 || zoneName.isEmpty()) return
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put(COLUMN_ID, java.util.UUID.randomUUID().toString())
+            put(COLUMN_ZONE_NAME, zoneName)
+            put(COLUMN_ENTRY_TIME, entryTime)
+            put(COLUMN_EXIT_TIME, exitTime)
+            put(COLUMN_DURATION_SECONDS, duration)
+        }
+        db.insert(TABLE_ZONE_TIME_LOG, null, values)
+    }
+
+    data class ZoneTimeBucket(
+        val zoneName: String,
+        val totalSeconds: Long
+    )
+
+    fun getDailyZoneTime(): List<ZoneTimeBucket> {
+        val todayStart = getDayStartMillis(System.currentTimeMillis())
+        val tomorrowStart = todayStart + 86400000L
+        return aggregateZoneTime(todayStart, tomorrowStart)
+    }
+
+    fun getWeeklyZoneTime(): List<ZoneTimeBucket> {
+        val cal = java.util.Calendar.getInstance()
+        cal.firstDayOfWeek = java.util.Calendar.SATURDAY
+        cal.timeInMillis = System.currentTimeMillis()
+        cal.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.SATURDAY)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        val weekStart = cal.timeInMillis
+        val weekEnd = weekStart + 7L * 86400000L
+        return aggregateZoneTime(weekStart, weekEnd)
+    }
+
+    private fun aggregateZoneTime(startMillis: Long, endMillis: Long): List<ZoneTimeBucket> {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_ZONE_NAME, SUM($COLUMN_DURATION_SECONDS) as total " +
+            "FROM $TABLE_ZONE_TIME_LOG " +
+            "WHERE $COLUMN_ENTRY_TIME >= ? AND $COLUMN_ENTRY_TIME < ? " +
+            "GROUP BY $COLUMN_ZONE_NAME " +
+            "ORDER BY total DESC",
+            arrayOf(startMillis.toString(), endMillis.toString())
+        )
+        val result = mutableListOf<ZoneTimeBucket>()
+        cursor.use {
+            while (it.moveToNext()) {
+                result.add(ZoneTimeBucket(
+                    zoneName = it.getString(0),
+                    totalSeconds = it.getLong(1)
+                ))
+            }
+        }
+        return result
+    }
+
+    private fun getDayStartMillis(timestamp: Long): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = timestamp
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
     }
 }

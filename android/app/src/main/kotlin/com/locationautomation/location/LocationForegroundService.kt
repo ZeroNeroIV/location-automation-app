@@ -69,6 +69,7 @@ class LocationForegroundService : Service() {
     private var currentZone: Zone? = null
     private var currentProfile: Profile? = null
     private var zoneEntryTime: Long = 0
+    private var isInitialized: Boolean = false
     
     private var savedRingerMode: Int = AudioManager.RINGER_MODE_NORMAL
     private var savedInterruptionFilter: Int = NotificationManager.INTERRUPTION_FILTER_ALL
@@ -203,6 +204,13 @@ class LocationForegroundService : Service() {
             calculateDistance(latitude, longitude, zone.latitude, zone.longitude) <= zone.radius
         }
 
+        if (!isInitialized) {
+            currentZone = insideZone
+            isInitialized = true
+            android.util.Log.d("LocationService", "Initialized in zone: ${insideZone?.name ?: "none"}")
+            return
+        }
+
         if (insideZone != currentZone) {
             val previousZone = currentZone
             currentZone = insideZone
@@ -223,6 +231,7 @@ class LocationForegroundService : Service() {
                 SoundManager.playSound(this, R.raw.error_bleep_1)
                 android.util.Log.d("LocationService", "Entered zone: ${insideZone.name}")
             } else if (previousZone != null) {
+                database.logZoneSession(previousZone.name, zoneEntryTime, System.currentTimeMillis())
                 restoreNormalMode()
                 cancelZoneNotification()
                 zoneEntryTime = 0
@@ -391,6 +400,10 @@ class LocationForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        val zone = currentZone
+        if (zone != null && zoneEntryTime > 0) {
+            database.logZoneSession(zone.name, zoneEntryTime, System.currentTimeMillis())
+        }
         stopLocationUpdates()
         restoreNormalMode()
     }
