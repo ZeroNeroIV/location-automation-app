@@ -6,12 +6,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 
 open class BaseActivity : AppCompatActivity() {
-
+    
     override fun onCreate(savedInstanceState: Bundle?) {
-        applyDarkModePreference()
         super.onCreate(savedInstanceState)
+        applyDarkModePreference()
     }
-
+    
     private fun applyDarkModePreference() {
         val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         val darkMode = prefs.getBoolean("dark_mode", false)
