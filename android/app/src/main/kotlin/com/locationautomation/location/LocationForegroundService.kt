@@ -324,6 +324,7 @@ private lateinit var locationManager: android.location.LocationManager
                 updateNotification("Zone: ${insideZone.name}", "Profile: ${profile?.name ?: "Normal"}")
                 broadcastStateChanged(insideZone.name, profile?.name ?: "Normal")
                 SoundManager.playSound(this, R.raw.error_bleep_1)
+                vibrateEntry()
                 android.util.Log.d("LocationService", "Entered zone: ${insideZone.name}")
             } else if (previousZone != null) {
                 database.logZoneSession(previousZone.name, zoneEntryTime, System.currentTimeMillis())
