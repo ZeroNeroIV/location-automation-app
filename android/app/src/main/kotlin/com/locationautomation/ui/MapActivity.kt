@@ -531,25 +531,25 @@ class MapActivity : BaseActivity() {
     private fun createZone(name: String, latitude: Double, longitude: Double, radius: Double, profileType: String, wifi: Boolean, bluetooth: Boolean, mobileData: Boolean) {
         val profileId = UUID.randomUUID().toString()
         
-        val profile = Profile(
-            id = profileId,
-            name = when (profileType) {
-                "normal" -> "Normal"
-                "silent" -> "Silent"
-                "vibrate" -> "Vibrate"
-                "dnd" -> "Do Not Disturb"
-                else -> "Normal"
-            },
-            ringtoneEnabled = profileType == "normal",
-            vibrateEnabled = profileType == "normal" || profileType == "vibrate",
-            unmuteEnabled = false,
-            dndEnabled = profileType == "dnd",
-            alarmsEnabled = profileType != "silent",
-            timersEnabled = profileType != "silent",
-            wifiEnabled = wifi,
-            bluetoothEnabled = bluetooth,
-            mobileDataEnabled = mobileData
-        )
+         val profile = Profile(
+             id = profileId,
+             name = when (profileType) {
+                 "normal" -> "Normal"
+                 "silent" -> "Silent"
+                 "vibrate" -> "Vibrate"
+                 "dnd" -> "Do Not Disturb"
+                 else -> "Normal"
+             },
+             ringtoneEnabled = profileType == "normal",
+             vibrateEnabled = profileType == "normal" || profileType == "vibrate",
+             unmuteEnabled = false,
+             dndEnabled = profileType == "dnd",
+             alarmsEnabled = profileType != "silent",
+             timersEnabled = profileType != "silent",
+             wifiEnabled = wifi,
+             bluetoothEnabled = bluetooth,
+             mobileDataEnabled = mobileData
+         )
         
         // Build detection methods based on what's actually enabled/available
         val detectionMethods = mutableListOf<String>()

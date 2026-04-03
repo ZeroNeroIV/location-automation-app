@@ -9,7 +9,7 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
 
     companion object {
         private const val DATABASE_NAME = "location_automation.db"
-        private const val DATABASE_VERSION = 5
+        private const val DATABASE_VERSION = 6
         
         private const val TABLE_ZONES = "zones"
         private const val TABLE_PROFILES = "profiles"
@@ -71,7 +71,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                 $COLUMN_UNMUTE_ENABLED INTEGER NOT NULL DEFAULT 0,
                 $COLUMN_DND_ENABLED INTEGER NOT NULL DEFAULT 0,
                 $COLUMN_ALARMS_ENABLED INTEGER NOT NULL DEFAULT 1,
-                $COLUMN_TIMERS_ENABLED INTEGER NOT NULL DEFAULT 1
+                $COLUMN_TIMERS_ENABLED INTEGER NOT NULL DEFAULT 1,
+                $COLUMN_WIFI_ENABLED INTEGER NOT NULL DEFAULT 1,
+                $COLUMN_BLUETOOTH_ENABLED INTEGER NOT NULL DEFAULT 1,
+                $COLUMN_MOBILE_DATA_ENABLED INTEGER NOT NULL DEFAULT 1
             )
         """.trimIndent()
         db.execSQL(createProfilesTable)
@@ -112,6 +115,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
         }
         if (oldVersion < 5) {
             db.execSQL("ALTER TABLE $TABLE_ZONES ADD COLUMN $COLUMN_MANUALLY_TRIGGERED INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 6) {
+            // Ensure wifi_enabled column exists (fix for missing column issue)
+            db.execSQL("ALTER TABLE $TABLE_PROFILES ADD COLUMN $COLUMN_WIFI_ENABLED INTEGER NOT NULL DEFAULT 1")
         }
     }
 
