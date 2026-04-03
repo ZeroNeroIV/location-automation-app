@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="?attr/android:colorBackground">
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="?attr/android:colorBackground"
+        android:paddingBottom="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -52,7 +58,9 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/circle_map_container"
-        android:clipToOutline="true">
+        android:clipToOutline="true"
+        android:clickable="false"
+        android:focusable="false">
 
         <org.osmdroid.views.MapView
             android:id="@+id/minimapView"
@@ -70,6 +78,15 @@
         android:text="Loading address..."
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="11sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDefaultNormal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"
+        android:text="Normal Profile"
+        style="@style/Widget.Material3.Button.TonalButton" />
 
     <LinearLayout
         android:id="@+id/cardZones"
@@ -350,9 +367,11 @@
         <com.locationautomation.ui.ZoneTimeGraphView
             android:id="@+id/zoneTimeGraph"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="200dp"
             android:layout_marginTop="16dp" />
 
     </LinearLayout>
 
-</LinearLayout>
+    </LinearLayout>
+
+</ScrollView>

@@ -13,6 +13,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.locationautomation.R
 import com.locationautomation.data.Zone
 import com.locationautomation.data.ZoneDatabase
+import com.locationautomation.location.LocationForegroundService
 
 class ZoneListActivity : BaseActivity() {
 
@@ -63,7 +64,8 @@ class ZoneListActivity : BaseActivity() {
 
         adapter = ZoneAdapter(
             onItemClick = { zone -> editZone(zone) },
-            onActiveToggle = { zone, isActive -> toggleActive(zone, isActive) }
+            onActiveToggle = { zone, isActive -> toggleActive(zone, isActive) },
+            onTriggerClick = { zone -> triggerZone(zone) }
         )
 
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -180,6 +182,30 @@ class ZoneListActivity : BaseActivity() {
         } catch (e: Exception) {
             android.util.Log.e("ZoneListActivity", "Failed to delete zone", e)
             Toast.makeText(this, "Failed to delete zone", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun triggerZone(zone: Zone) {
+        if (zone.isManuallyTriggered) {
+            val updatedZone = zone.copy(isManuallyTriggered = false)
+            try {
+                database.saveZone(updatedZone)
+                loadZones()
+            } catch (e: Exception) {
+                android.util.Log.e("ZoneListActivity", "Failed to reset zone", e)
+            }
+            LocationForegroundService.triggerNormalProfile(this)
+            Toast.makeText(this, "Back to Normal: ${zone.name}", Toast.LENGTH_SHORT).show()
+        } else {
+            val updatedZone = zone.copy(isManuallyTriggered = true)
+            try {
+                database.saveZone(updatedZone)
+                loadZones()
+            } catch (e: Exception) {
+                android.util.Log.e("ZoneListActivity", "Failed to update zone", e)
+            }
+            LocationForegroundService.triggerZone(this, zone.id)
+            Toast.makeText(this, "Triggered: ${zone.name}", Toast.LENGTH_SHORT).show()
         }
     }
 

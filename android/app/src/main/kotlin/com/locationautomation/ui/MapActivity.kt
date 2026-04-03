@@ -503,8 +503,23 @@ class MapActivity : BaseActivity() {
             val radius = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneRadiusInput).text.toString().toDoubleOrNull() ?: DEFAULT_RADIUS_METERS
 
             if (name.isNotEmpty()) {
-                bottomSheet.dismiss()
-                createZone(name, location.latitude, location.longitude, radius, selectedProfileType, wifiEnabled, bluetoothEnabled, mobileDataEnabled)
+                // Validate inputs
+                val tempZone = Zone(
+                    id = "temp",
+                    name = name,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    radius = radius,
+                    detectionMethods = listOf("gps"),
+                    profileId = "temp"
+                )
+                val validationError = Zone.validate(tempZone)
+                if (validationError.isEmpty()) {
+                    bottomSheet.dismiss()
+                    createZone(name, location.latitude, location.longitude, radius, selectedProfileType, wifiEnabled, bluetoothEnabled, mobileDataEnabled)
+                } else {
+                    Toast.makeText(this, validationError, Toast.LENGTH_LONG).show()
+                }
             } else {
                 Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
             }
@@ -651,8 +666,23 @@ class MapActivity : BaseActivity() {
             val radius = sheetView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.zoneRadiusInput).text.toString().toDoubleOrNull() ?: zone.radius
 
             if (name.isNotEmpty()) {
-                bottomSheet.dismiss()
-                updateZone(zone.id, name, radius, selectedProfileType, wifiEnabled, bluetoothEnabled, mobileDataEnabled)
+                // Validate inputs
+                val tempZone = Zone(
+                    id = zone.id,
+                    name = name,
+                    latitude = zone.latitude,
+                    longitude = zone.longitude,
+                    radius = radius,
+                    detectionMethods = zone.detectionMethods,
+                    profileId = zone.profileId
+                )
+                val validationError = Zone.validate(tempZone)
+                if (validationError.isEmpty()) {
+                    bottomSheet.dismiss()
+                    updateZone(zone.id, name, radius, selectedProfileType, wifiEnabled, bluetoothEnabled, mobileDataEnabled)
+                } else {
+                    Toast.makeText(this, validationError, Toast.LENGTH_LONG).show()
+                }
             } else {
                 Toast.makeText(this, "Please enter a zone name", Toast.LENGTH_SHORT).show()
             }

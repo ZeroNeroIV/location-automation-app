@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.widget.Button;
+import android.widget.Toast;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.location.Geocoder;
@@ -74,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout debugTriggers;
     private LinearLayout debugButtonsContainer;
     private Button btnBackToNormal;
+    private Button btnDefaultNormal;
     private Handler timerHandler;
     private Runnable timerRunnable;
     private ZoneDatabase database;
@@ -122,7 +124,13 @@ public class MainActivity extends AppCompatActivity {
         database = new ZoneDatabase(this);
         timerHandler = new Handler(Looper.getMainLooper());
 
-        requestNotificationPermission();
+        // Request all necessary permissions on first launch
+        if (!appPrefs.getBoolean("has_requested_permissions", false)) {
+            requestAllPermissions();
+            appPrefs.edit().putBoolean("has_requested_permissions", true).apply();
+        } else {
+            requestNotificationPermission();
+        }
         setupViews();
         setupTimer();
         setupMinimap();
@@ -170,6 +178,7 @@ public class MainActivity extends AppCompatActivity {
         debugTriggers = findViewById(R.id.debugTriggers);
         debugButtonsContainer = findViewById(R.id.debugButtonsContainer);
         btnBackToNormal = findViewById(R.id.btnBackToNormal);
+        btnDefaultNormal = findViewById(R.id.btnDefaultNormal);
         zoneTimeGraph = findViewById(R.id.zoneTimeGraph);
         btnDayView = findViewById(R.id.btnDayView);
         btnWeekView = findViewById(R.id.btnWeekView);
@@ -193,6 +202,11 @@ public class MainActivity extends AppCompatActivity {
             disableAutomation();
             prefs.edit().putBoolean("dev_mode", false).apply();
             debugTriggers.setVisibility(LinearLayout.GONE);
+        });
+
+        btnDefaultNormal.setOnClickListener(v -> {
+            LocationForegroundService.triggerNormalProfile(this);
+            Toast.makeText(this, "Back to Normal", Toast.LENGTH_SHORT).show();
         });
 
         cardZones.setOnClickListener(v -> {
@@ -333,6 +347,17 @@ public class MainActivity extends AppCompatActivity {
         debugTriggers.setVisibility(LinearLayout.GONE);
     }
 
+    private void requestAllPermissions() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                        Manifest.permission.BLUETOOTH,
+                        Manifest.permission.POST_NOTIFICATIONS
+                },
+                1001);
+    }
+
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -372,6 +397,8 @@ public class MainActivity extends AppCompatActivity {
         minimapView.setTileSource(TileSourceFactory.MAPNIK);
         minimapView.setMultiTouchControls(false);
         minimapView.setClickable(false);
+        minimapView.setEnabled(false);
+        minimapView.setFocusable(false);
         minimapView.setBuiltInZoomControls(false);
         minimapView.getController().setZoom(16.0);
         minimapLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);

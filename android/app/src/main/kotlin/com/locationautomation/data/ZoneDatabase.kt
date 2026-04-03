@@ -9,7 +9,7 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
 
     companion object {
         private const val DATABASE_NAME = "location_automation.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 5
         
         private const val TABLE_ZONES = "zones"
         private const val TABLE_PROFILES = "profiles"
@@ -21,6 +21,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
         private const val COLUMN_RADIUS = "radius"
         private const val COLUMN_DETECTION_METHODS = "detection_methods"
         private const val COLUMN_PROFILE_ID = "profile_id"
+        private const val COLUMN_WIFI_SSID = "wifi_ssid"
+        private const val COLUMN_BLUETOOTH_ADDRESS = "bluetooth_address"
+        private const val COLUMN_BLUETOOTH_NAME = "bluetooth_name"
+        private const val COLUMN_MANUALLY_TRIGGERED = "manually_triggered"
         
         // Profile columns
         private const val COLUMN_RINGTONE_ENABLED = "ringtone_enabled"
@@ -49,7 +53,11 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                 $COLUMN_LONGITUDE REAL NOT NULL,
                 $COLUMN_RADIUS REAL NOT NULL,
                 $COLUMN_DETECTION_METHODS TEXT NOT NULL,
-                $COLUMN_PROFILE_ID TEXT NOT NULL
+                $COLUMN_PROFILE_ID TEXT NOT NULL,
+                $COLUMN_WIFI_SSID TEXT,
+                $COLUMN_BLUETOOTH_ADDRESS TEXT,
+                $COLUMN_BLUETOOTH_NAME TEXT,
+                $COLUMN_MANUALLY_TRIGGERED INTEGER NOT NULL DEFAULT 0
             )
         """.trimIndent()
         db.execSQL(createZonesTable)
@@ -97,6 +105,14 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
             db.execSQL("ALTER TABLE $TABLE_PROFILES ADD COLUMN $COLUMN_BLUETOOTH_ENABLED INTEGER NOT NULL DEFAULT 1")
             db.execSQL("ALTER TABLE $TABLE_PROFILES ADD COLUMN $COLUMN_MOBILE_DATA_ENABLED INTEGER NOT NULL DEFAULT 1")
         }
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE $TABLE_ZONES ADD COLUMN $COLUMN_WIFI_SSID TEXT")
+            db.execSQL("ALTER TABLE $TABLE_ZONES ADD COLUMN $COLUMN_BLUETOOTH_ADDRESS TEXT")
+            db.execSQL("ALTER TABLE $TABLE_ZONES ADD COLUMN $COLUMN_BLUETOOTH_NAME TEXT")
+        }
+        if (oldVersion < 5) {
+            db.execSQL("ALTER TABLE $TABLE_ZONES ADD COLUMN $COLUMN_MANUALLY_TRIGGERED INTEGER NOT NULL DEFAULT 0")
+        }
     }
 
     fun saveZone(zone: Zone) {
@@ -109,6 +125,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
             put(COLUMN_RADIUS, zone.radius)
             put(COLUMN_DETECTION_METHODS, zone.detectionMethods.joinToString(","))
             put(COLUMN_PROFILE_ID, zone.profileId)
+            put(COLUMN_WIFI_SSID, zone.wifiSSID)
+            put(COLUMN_BLUETOOTH_ADDRESS, zone.bluetoothAddress)
+            put(COLUMN_BLUETOOTH_NAME, zone.bluetoothName)
+            put(COLUMN_MANUALLY_TRIGGERED, if (zone.isManuallyTriggered) 1 else 0)
         }
         db.insertWithOnConflict(TABLE_ZONES, null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
@@ -129,7 +149,11 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                     detectionMethods = it.getString(it.getColumnIndexOrThrow(COLUMN_DETECTION_METHODS))
                         .split(",")
                         .filter { it.isNotEmpty() },
-                    profileId = it.getString(it.getColumnIndexOrThrow(COLUMN_PROFILE_ID))
+                    profileId = it.getString(it.getColumnIndexOrThrow(COLUMN_PROFILE_ID)),
+                    wifiSSID = it.getString(it.getColumnIndexOrThrow(COLUMN_WIFI_SSID)),
+                    bluetoothAddress = it.getString(it.getColumnIndexOrThrow(COLUMN_BLUETOOTH_ADDRESS)),
+                    bluetoothName = it.getString(it.getColumnIndexOrThrow(COLUMN_BLUETOOTH_NAME)),
+                    isManuallyTriggered = it.getInt(it.getColumnIndexOrThrow(COLUMN_MANUALLY_TRIGGERED)) == 1
                 )
                 zones.add(zone)
             }
@@ -158,7 +182,11 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
                     detectionMethods = it.getString(it.getColumnIndexOrThrow(COLUMN_DETECTION_METHODS))
                         .split(",")
                         .filter { s -> s.isNotEmpty() },
-                    profileId = it.getString(it.getColumnIndexOrThrow(COLUMN_PROFILE_ID))
+                    profileId = it.getString(it.getColumnIndexOrThrow(COLUMN_PROFILE_ID)),
+                    wifiSSID = it.getString(it.getColumnIndexOrThrow(COLUMN_WIFI_SSID)),
+                    bluetoothAddress = it.getString(it.getColumnIndexOrThrow(COLUMN_BLUETOOTH_ADDRESS)),
+                    bluetoothName = it.getString(it.getColumnIndexOrThrow(COLUMN_BLUETOOTH_NAME)),
+                    isManuallyTriggered = it.getInt(it.getColumnIndexOrThrow(COLUMN_MANUALLY_TRIGGERED)) == 1
                 )
             }
         }
@@ -179,6 +207,10 @@ class ZoneDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, 
             put(COLUMN_RADIUS, zone.radius)
             put(COLUMN_DETECTION_METHODS, zone.detectionMethods.joinToString(","))
             put(COLUMN_PROFILE_ID, zone.profileId)
+            put(COLUMN_WIFI_SSID, zone.wifiSSID)
+            put(COLUMN_BLUETOOTH_ADDRESS, zone.bluetoothAddress)
+            put(COLUMN_BLUETOOTH_NAME, zone.bluetoothName)
+            put(COLUMN_MANUALLY_TRIGGERED, if (zone.isManuallyTriggered) 1 else 0)
         }
         db.update(TABLE_ZONES, values, "$COLUMN_ID = ?", arrayOf(zone.id))
     }

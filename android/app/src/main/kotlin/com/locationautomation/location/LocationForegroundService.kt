@@ -9,6 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.os.Vibrator
+import android.os.VibrationEffect
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -31,7 +34,9 @@ class LocationForegroundService : Service() {
         const val ACTION_START = "com.locationautomation.action.START_SERVICE"
         const val ACTION_STOP = "com.locationautomation.action.STOP_SERVICE"
         const val ACTION_DEBUG_TRIGGER = "com.locationautomation.action.DEBUG_TRIGGER"
+        const val ACTION_RESTORE_NORMAL = "com.locationautomation.action.RESTORE_NORMAL"
         const val EXTRA_DEBUG_ZONE_INDEX = "debug_zone_index"
+        const val EXTRA_DEBUG_ZONE_ID = "debug_zone_id"
         const val BROADCAST_STATE_CHANGED = "com.locationautomation.STATE_CHANGED"
         const val EXTRA_ZONE_NAME = "zone_name"
         const val EXTRA_PROFILE_NAME = "profile_name"
@@ -61,11 +66,29 @@ class LocationForegroundService : Service() {
             }
             context.startService(intent)
         }
+
+        @JvmStatic
+        fun triggerZone(context: Context, zoneId: String) {
+            val intent = Intent(context, LocationForegroundService::class.java).apply {
+                action = ACTION_DEBUG_TRIGGER
+                putExtra(EXTRA_DEBUG_ZONE_ID, zoneId)
+            }
+            context.startService(intent)
+        }
+
+        @JvmStatic
+        fun triggerNormalProfile(context: Context) {
+            val intent = Intent(context, LocationForegroundService::class.java).apply {
+                action = ACTION_RESTORE_NORMAL
+            }
+            context.startService(intent)
+        }
     }
 
-    private lateinit var locationManager: android.location.LocationManager
-    private lateinit var database: ZoneDatabase
-    private lateinit var audioManager: AudioManager
+private lateinit var locationManager: android.location.LocationManager
+        private lateinit var database: ZoneDatabase
+        private lateinit var audioManager: AudioManager
+        private lateinit var vibrator: Vibrator
     private var currentZone: Zone? = null
     private var currentProfile: Profile? = null
     private var zoneEntryTime: Long = 0
@@ -95,18 +118,54 @@ class LocationForegroundService : Service() {
         super.onCreate()
         locationManager = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         database = ZoneDatabase(this)
         createNotificationChannel()
+    }
+
+    private fun vibrateEntry() {
+        if (vibrator.hasVibrator()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                //noinspection deprecation
+                vibrator.vibrate(50)
+            }
+        }
+    }
+
+    private fun vibrateExit() {
+        if (vibrator.hasVibrator()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                Handler(Looper.getMainLooper()).postDelayed({
+                    vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                }, 150)
+            } else {
+                //noinspection deprecation
+                vibrator.vibrate(100)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    //noinspection deprecation
+                    vibrator.vibrate(100)
+                }, 150)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startForegroundService()
             ACTION_STOP -> stopSelf()
+            ACTION_RESTORE_NORMAL -> restoreNormalMode()
             ACTION_DEBUG_TRIGGER -> {
-                val zoneIndex = intent.getIntExtra(EXTRA_DEBUG_ZONE_INDEX, -1)
-                if (zoneIndex >= 0) {
-                    triggerDebugZone(zoneIndex)
+                val zoneId = intent.getStringExtra(EXTRA_DEBUG_ZONE_ID)
+                if (zoneId != null) {
+                    triggerZoneById(zoneId)
+                } else {
+                    val zoneIndex = intent.getIntExtra(EXTRA_DEBUG_ZONE_INDEX, -1)
+                    if (zoneIndex >= 0) {
+                        triggerDebugZone(zoneIndex)
+                    }
                 }
             }
         }
@@ -139,6 +198,35 @@ class LocationForegroundService : Service() {
         sendZoneNotification(targetZone.name)
         updateNotification("Zone: ${targetZone.name}", "Profile: ${profile?.name ?: "Normal"}")
         broadcastStateChanged(targetZone.name, profile?.name ?: "Normal")
+    }
+
+    private fun triggerZoneById(zoneId: String) {
+        val targetZone = try {
+            database.getZone(zoneId)
+        } catch (e: Exception) {
+            return
+        }
+
+        if (targetZone == null) return
+
+        currentZone = targetZone
+        zoneEntryTime = System.currentTimeMillis()
+
+        val profile = try {
+            database.getProfile(targetZone.profileId)
+        } catch (e: Exception) {
+            null
+        }
+        captureConnectivityState()
+        applyProfile(profile)
+        if (profile != null) applyConnectivity(profile)
+        currentProfile = profile
+        sendZoneNotification(targetZone.name)
+        updateNotification("Zone: ${targetZone.name}", "Profile: ${profile?.name ?: "Normal"}")
+        broadcastStateChanged(targetZone.name, profile?.name ?: "Normal")
+        
+        // Vibrate on zone entry
+        vibrateEntry()
     }
 
     private fun startForegroundService() {
@@ -239,6 +327,8 @@ class LocationForegroundService : Service() {
                 android.util.Log.d("LocationService", "Entered zone: ${insideZone.name}")
             } else if (previousZone != null) {
                 database.logZoneSession(previousZone.name, zoneEntryTime, System.currentTimeMillis())
+                // Vibrate on zone exit
+                vibrateExit()
                 restoreNormalMode()
                 sendLeaveNotification(previousZone.name)
                 zoneEntryTime = 0
