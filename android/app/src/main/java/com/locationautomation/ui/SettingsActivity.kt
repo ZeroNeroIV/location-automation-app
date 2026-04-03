@@ -47,6 +47,8 @@ class SettingsActivity : BaseActivity() {
                     if (isChecked) AppCompatDelegate.MODE_NIGHT_YES
                     else AppCompatDelegate.MODE_NIGHT_NO
                 )
+                // Recreate activity to apply theme change immediately
+                recreate()
             }
         }
 
