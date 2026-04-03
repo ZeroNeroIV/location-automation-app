@@ -551,13 +551,19 @@ class MapActivity : BaseActivity() {
             mobileDataEnabled = mobileData
         )
         
+        // Build detection methods based on what's actually enabled/available
+        val detectionMethods = mutableListOf<String>()
+        detectionMethods.add("gps") // GPS is always available as fallback
+        if (wifi) detectionMethods.add("wifi")
+        if (bluetooth) detectionMethods.add("bluetooth")
+        
         val zone = Zone(
             id = UUID.randomUUID().toString(),
             name = name,
             latitude = latitude,
             longitude = longitude,
             radius = radius,
-            detectionMethods = listOf("gps"),
+            detectionMethods = detectionMethods,
             profileId = profileId
         )
         
@@ -570,8 +576,8 @@ class MapActivity : BaseActivity() {
             Toast.makeText(this, "Zone created: $name", Toast.LENGTH_SHORT).show()
             SoundManager.playSound(this, R.raw.error_bleep_3)
         } catch (e: Exception) {
-            android.util.Log.e("MapActivity", "Failed to create zone", e)
-            Toast.makeText(this, "Failed to create zone", Toast.LENGTH_SHORT).show()
+            android.util.Log.e("MapActivity", "Failed to create zone: ${e.message}", e)
+            Toast.makeText(this, "Failed to create zone: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
